@@ -723,7 +723,7 @@
     </div>
 
     <div id="volleyStatusBar">
-      <span>Puntos del set actual · Sets acumulados</span>
+      <span id="volleyStatusText">Puntos del set actual · Sets acumulados</span>
     </div>
   </div>
 
@@ -916,6 +916,18 @@
   let volleyState;
   let volleyEventTimer = null;
   let volleyLastRenderedEventId = null;
+  let volleyServerTimeOffset = 0;
+
+  // Firebase server time: avoids false/stale event timing when the
+  // browser clock is ahead/behind the Firebase server.
+  volleyDatabase.ref('.info/serverTimeOffset').on('value', function (snapshot) {
+    const offset = Number(snapshot.val());
+    volleyServerTimeOffset = Number.isFinite(offset) ? offset : 0;
+  });
+
+  function volleyServerNow() {
+    return Date.now() + volleyServerTimeOffset;
+  }
 
   const volleyDefaults = {
     volleyTeam1Name: 'ASTRA',
@@ -987,6 +999,8 @@
     return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
   }
 
+  // Normalize every Firebase snapshot so old/missing fields never break
+  // the public scoreboard.
   function normalizeVolleyState(data) {
     const normalized = Object.assign({}, volleyDefaults, data || {});
     normalized.volleyPoints1 = volleySafeInteger(normalized.volleyPoints1, 0);
@@ -1083,7 +1097,7 @@
     if (!event || !event.id || event.id === volleyLastRenderedEventId) return;
 
     const createdAt = Number(event.createdAt || 0);
-    if (createdAt && Date.now() - createdAt > 12000) {
+    if (createdAt && volleyServerNow() - createdAt > 12000) {
       volleyLastRenderedEventId = event.id;
       return;
     }
@@ -1115,17 +1129,31 @@
   }
 
   function addVolleyPoint(teamNumber, showEvent) {
+    if (!volleyIsAdmin) return;
+
     const pointKey = teamNumber === 2 ? 'volleyPoints2' : 'volleyPoints1';
-    const nextPoints = volleyState[pointKey] + 1;
-    const partial = {
-      [pointKey]: nextPoints
-    };
+    const pointRef = volleyMatchReference.child(pointKey);
 
-    if (showEvent) {
-      partial.volleyLastEvent = buildVolleyEvent('point', teamNumber);
-    }
+    pointRef.transaction(function (current) {
+      return volleySafeInteger(current, 0) + 1;
+    }).then(function (result) {
+      if (!result.committed) return;
 
-    updateVolleyState(partial);
+      const newPoints = volleySafeInteger(result.snapshot.val(), 0);
+
+      if (showEvent) {
+        const event = buildVolleyEvent('point', teamNumber);
+        event.points1 = teamNumber === 1 ? newPoints : volleyState.volleyPoints1;
+        event.points2 = teamNumber === 2 ? newPoints : volleyState.volleyPoints2;
+        event.createdAt = firebase.database.ServerValue.TIMESTAMP;
+
+        return volleyMatchReference.update({
+          volleyLastEvent: event
+        });
+      }
+    }).catch(function (error) {
+      console.error('Error al sumar punto:', error);
+    });
   }
 
   function adjustVolleyValue(category, teamNumber, delta) {
@@ -1137,18 +1165,38 @@
   }
 
   function awardVolleySet(teamNumber) {
-    const setKey = teamNumber === 2 ? 'volleySets2' : 'volleySets1';
-    const event = buildVolleyEvent('set', teamNumber);
+    if (!volleyIsAdmin) return;
 
-    updateVolleyState({
-      [setKey]: volleyState[setKey] + 1,
-      volleyPoints1: 0,
-      volleyPoints2: 0,
-      volleyLastEvent: event
+    volleyMatchReference.transaction(function (current) {
+      const next = normalizeVolleyState(current || volleyDefaults);
+      const setKey = teamNumber === 2 ? 'volleySets2' : 'volleySets1';
+
+      next[setKey] += 1;
+      next.volleyPoints1 = 0;
+      next.volleyPoints2 = 0;
+
+      next.volleyLastEvent = {
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        type: 'set',
+        teamNumber: teamNumber,
+        teamName: teamNumber === 2 ? next.volleyTeam2Name : next.volleyTeam1Name,
+        points1: 0,
+        points2: 0,
+        sets1: next.volleySets1,
+        sets2: next.volleySets2,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        note: ''
+      };
+
+      return next;
+    }).catch(function (error) {
+      console.error('Error al cerrar set:', error);
     });
   }
 
   function resetVolleyCurrentSet() {
+    if (!volleyIsAdmin) return;
+
     updateVolleyState({
       volleyPoints1: 0,
       volleyPoints2: 0,
@@ -1193,7 +1241,7 @@
     } else {
       volleyState = deepCopy(volleyDefaults);
       if (volleyIsAdmin) {
-        volleyMatchReference.set(volleyDefaults);
+        volleyMatchReference.set(deepCopy(volleyDefaults));
       }
     }
 
@@ -1208,9 +1256,15 @@
     if (snapshot.val() === true) {
       dot.className = 'online';
       text.textContent = 'Conectado — cambios en vivo';
+
+      const status = document.getElementById('volleyStatusText');
+      if (status) status.textContent = 'EN VIVO · SINCRONIZADO · PUNTOS DEL SET ACTUAL';
     } else {
       dot.className = 'offline';
       text.textContent = 'Sin conexión...';
+
+      const status = document.getElementById('volleyStatusText');
+      if (status) status.textContent = 'SIN CONEXIÓN · ESPERANDO FIREBASE';
     }
   });
 
