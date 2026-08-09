@@ -947,6 +947,238 @@
     #volleyCenter { order: 3; border-left: 0; border-right: 0; }
     .volley-team-panel { min-height: 120px; }
   }
+
+  /* ================================================================
+     ASTRA VOLLEY // MANUAL PRO — visual direction
+     Clean arena board, oversized scores, editable-first composition.
+     ================================================================ */
+  body {
+    background:
+      radial-gradient(circle at 50% -20%, rgba(91,140,255,.16), transparent 38%),
+      #02050a !important;
+  }
+
+  #volleyScoreboardWrapper {
+    width: min(1240px, 96vw);
+    min-width: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: #05080d;
+    box-shadow: 0 30px 90px rgba(0,0,0,.62);
+  }
+
+  #volleyBroadcastHeader {
+    height: 48px;
+    padding: 0 24px;
+    background: #070b11;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+
+  #volleyLiveBadge {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  #volleySetLabel {
+    min-width: 160px;
+    padding: 8px 22px;
+    border-radius: 4px;
+    background: #101721;
+    border: 1px solid rgba(255,255,255,.12);
+    font-size: 12px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+  }
+
+  #volleyMatchLabel {
+    color: #8995a8;
+    font-size: 10px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+  }
+
+  #volleyScoreboard {
+    grid-template-columns: minmax(0, 1fr) 360px minmax(0, 1fr);
+    min-height: 230px;
+  }
+
+  .volley-team-panel {
+    padding: 30px 34px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .volley-team-panel:first-child {
+    border-right: 1px solid rgba(255,255,255,.07);
+  }
+
+  .volley-team-panel:last-child {
+    border-left: 1px solid rgba(255,255,255,.07);
+  }
+
+  .volley-team-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .65;
+  }
+
+  .volley-team-panel:first-child::before {
+    background: linear-gradient(90deg, rgba(91,140,255,.14), transparent 55%);
+  }
+
+  .volley-team-panel:last-child::before {
+    background: linear-gradient(270deg, rgba(255,77,109,.14), transparent 55%);
+  }
+
+  .volley-logo {
+    width: 92px !important;
+    height: 92px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 16px 35px rgba(0,0,0,.38);
+  }
+
+  .volley-team-name {
+    font-size: clamp(24px, 3vw, 38px) !important;
+    line-height: .95;
+    letter-spacing: .5px;
+    font-weight: 900 !important;
+    text-transform: uppercase;
+  }
+
+  .volley-points {
+    font-size: clamp(100px, 11vw, 154px) !important;
+    line-height: .72 !important;
+    letter-spacing: -7px;
+    font-weight: 900 !important;
+  }
+
+  .volley-set-value {
+    font-size: 27px !important;
+    padding: 3px 10px;
+    min-width: 40px;
+    display: inline-block;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.04);
+    border-radius: 4px;
+  }
+
+  #volleyCenter {
+    min-height: 230px;
+    background:
+      radial-gradient(circle at 50% 45%, rgba(255,255,255,.07), transparent 55%),
+      #070b12;
+  }
+
+  #volleyCenter::before {
+    content: 'MARCADOR MANUAL';
+    top: 14px;
+    color: #67748a;
+    font-size: 9px;
+    letter-spacing: 3px;
+  }
+
+  #volleySetsScore {
+    margin-top: 36px;
+    gap: 12px;
+    font-size: 86px !important;
+    font-weight: 900;
+    letter-spacing: -5px;
+  }
+
+  #volleySetsScore .set-number {
+    min-width: 92px;
+    padding: 10px 14px 5px;
+    border-radius: 5px;
+    background: #0c121b;
+    border: 1px solid rgba(255,255,255,.12);
+  }
+
+  #volleySetsScore .set-divider {
+    font-size: 52px;
+    color: #4e5b70;
+  }
+
+  .volley-set-caption {
+    margin-top: 12px;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #69778e;
+  }
+
+  #volleySetHistory {
+    display: none !important;
+  }
+
+  #volleyStatusBar {
+    min-height: 42px;
+    padding: 0 20px;
+    background: #070b11;
+    border-top: 1px solid rgba(255,255,255,.07);
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-size: 10px;
+  }
+
+  /* Editable admin: dense control board */
+  #volleyAdminPanel {
+    width: min(430px, 94vw);
+    background: #080d14;
+    border-left: 1px solid rgba(255,255,255,.12);
+  }
+
+  .volley-admin-section {
+    border: 1px solid rgba(255,255,255,.08);
+    background: #0c121a;
+    border-radius: 8px;
+  }
+
+  .volley-admin-section h3 {
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .volley-score-control input,
+  .volley-field input {
+    border-radius: 5px !important;
+    background: #05080d !important;
+    border-color: rgba(255,255,255,.12) !important;
+  }
+
+  .volley-btn {
+    border-radius: 5px !important;
+    font-weight: 800;
+  }
+
+  .volley-manual-note {
+    padding: 10px 12px;
+    border: 1px dashed rgba(255,255,255,.13);
+    border-radius: 6px;
+    color: #7f8ca1;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  @media (max-width: 900px) {
+    #volleyScoreboard { grid-template-columns: 1fr 260px 1fr; }
+    .volley-team-panel { padding: 24px 18px; }
+    .volley-logo { width: 70px !important; height: 70px !important; }
+    #volleySetsScore { font-size: 64px !important; }
+  }
+
+  @media (max-width: 680px) {
+    #volleyBroadcastHeader { grid-template-columns: 1fr auto; }
+    #volleyMatchLabel { display: none; }
+    #volleyScoreboard { grid-template-columns: 1fr; }
+    #volleyCenter { order: 3; min-height: 170px; }
+    .volley-team-panel { min-height: 170px; }
+  }
+
+  #volleyEventOverlay { display: none !important; }
 </style>
 </head>
 <body>
@@ -996,15 +1228,6 @@
           <span class="volley-sets-line">Sets <strong class="volley-set-value" id="volleySets2">0</strong></span>
         </div>
       </section>
-    </div>
-
-    
-    <div id="volleySetHistory" aria-label="Historial de sets">
-      <div class="set-history-box active"><span>SET 1</span><span>—</span></div>
-      <div class="set-history-box"><span>SET 2</span><span>—</span></div>
-      <div class="set-history-box"><span>SET 3</span><span>—</span></div>
-      <div class="set-history-box"><span>SET 4</span><span>—</span></div>
-      <div class="set-history-box"><span>SET 5</span><span>—</span></div>
     </div>
 <div id="volleyStatusBar">
       <span id="volleyStatusText">Puntos del set actual · Sets acumulados</span>
@@ -1139,13 +1362,23 @@
       </div>
     </div>
 
-    <div class="volley-team-actions">
-      <button class="volley-btn primary" id="volleyWinSetTeam1" type="button">🏆 Set para local</button>
-      <button class="volley-btn primary" id="volleyWinSetTeam2" type="button">🏆 Set para visitante</button>
+    <div class="volley-field">
+      <label for="volleyInputCurrentSet">Set actual</label>
+      <input type="number" id="volleyInputCurrentSet" min="1" value="1">
     </div>
-    <div class="volley-hint">
-      “Set para...” suma un set al equipo ganador, reinicia ambos puntos a cero
-      y avanza automáticamente al siguiente set.
+
+    <div class="volley-field">
+      <label for="volleyInputMatchTitle">Nombre del partido</label>
+      <input type="text" id="volleyInputMatchTitle" placeholder="FINAL · VOLEIBOL">
+    </div>
+
+    <div class="volley-team-actions">
+      <button class="volley-btn primary" id="volleyManualSetTeam1" type="button">+1 SET LOCAL</button>
+      <button class="volley-btn primary" id="volleyManualSetTeam2" type="button">+1 SET VISITANTE</button>
+    </div>
+    <div class="volley-manual-note">
+      <strong>Modo 100% manual.</strong><br>
+      Nada cambia por sí solo: puntos, sets y set actual se editan desde este panel.
     </div>
   </section>
 
@@ -1182,7 +1415,6 @@
 
   const VOLLEY_ADMIN_PASSWORD = 'astraprods';
   const VOLLEY_DATABASE_ROOT = 'marcadoresVolleyball';
-  const VOLLEY_EVENT_DURATION_MS = 3200;
 
   if (!firebase.apps.length) {
     firebase.initializeApp(VOLLEY_FIREBASE_CONFIG);
@@ -1198,21 +1430,6 @@
 
   let volleyIsAdmin = false;
   let volleyState;
-  let volleyEventTimer = null;
-  let volleyLastRenderedEventId = null;
-  let volleyServerTimeOffset = 0;
-
-  // Firebase server time: avoids false/stale event timing when the
-  // browser clock is ahead/behind the Firebase server.
-  volleyDatabase.ref('.info/serverTimeOffset').on('value', function (snapshot) {
-    const offset = Number(snapshot.val());
-    volleyServerTimeOffset = Number.isFinite(offset) ? offset : 0;
-  });
-
-  function volleyServerNow() {
-    return Date.now() + volleyServerTimeOffset;
-  }
-
   const volleyDefaults = {
     volleyTeam1Name: 'ASTRA',
     volleyTeam1Logo: 'https://i.imgur.com/6EJUsQO.png',
@@ -1226,7 +1443,8 @@
     volleyPoints2: 0,
     volleySets1: 0,
     volleySets2: 0,
-    volleyLastEvent: null
+    volleyCurrentSet: 1,
+    volleyMatchTitle: 'VOLEIBOL · PARTIDO EN VIVO'
   };
 
   volleyState = deepCopy(volleyDefaults);
@@ -1243,12 +1461,7 @@
     sets1: document.getElementById('volleySets1'),
     sets2: document.getElementById('volleySets2'),
     setLabel: document.getElementById('volleySetLabel'),
-    matchLabel: document.getElementById('volleyMatchLabel'),
-    eventOverlay: document.getElementById('volleyEventOverlay'),
-    eventIcon: document.getElementById('volleyEventIcon'),
-    eventTitle: document.getElementById('volleyEventTitle'),
-    eventSubtitle: document.getElementById('volleyEventSubtitle'),
-    eventScore: document.getElementById('volleyEventScore')
+    matchLabel: document.getElementById('volleyMatchLabel')
   };
 
   const volleyInputs = {
@@ -1263,7 +1476,9 @@
     volleyPoints1: document.getElementById('volleyInputPoints1'),
     volleyPoints2: document.getElementById('volleyInputPoints2'),
     volleySets1: document.getElementById('volleyInputSets1'),
-    volleySets2: document.getElementById('volleyInputSets2')
+    volleySets2: document.getElementById('volleyInputSets2'),
+    volleyCurrentSet: document.getElementById('volleyInputCurrentSet'),
+    volleyMatchTitle: document.getElementById('volleyInputMatchTitle')
   };
 
   function deepCopy(value) {
@@ -1295,7 +1510,7 @@
   }
 
   function currentVolleySetNumber() {
-    return Math.max(1, volleyState.volleySets1 + volleyState.volleySets2 + 1);
+    return Math.max(1, volleySafeInteger(volleyState.volleyCurrentSet, 1));
   }
 
   function updateVolleyState(partial) {
@@ -1313,7 +1528,7 @@
     volleyElements.sets1.textContent = volleyState.volleySets1;
     volleyElements.sets2.textContent = volleyState.volleySets2;
     volleyElements.setLabel.textContent = 'SET ' + currentVolleySetNumber();
-    volleyElements.matchLabel.textContent = String(volleyMatchId).toUpperCase();
+    volleyElements.matchLabel.textContent = volleyState.volleyMatchTitle || String(volleyMatchId).toUpperCase();
 
     volleyElements.teamHome.style.background = volleyState.volleyTeam1Color;
     volleyElements.teamHome.style.color = volleyState.volleyTeam1TextColor;
@@ -1321,17 +1536,7 @@
     volleyElements.teamAway.style.color = volleyState.volleyTeam2TextColor;
 
 
-    if (previousState) {
-      if (previousState.volleyPoints1 !== volleyState.volleyPoints1) {
-        animateVolleyPoint(volleyElements.points1);
-      }
-      if (previousState.volleyPoints2 !== volleyState.volleyPoints2) {
-        animateVolleyPoint(volleyElements.points2);
-      }
-    }
-
     fillVolleyInputs();
-    renderVolleyEventIfNeeded();
   }
 
   function animateVolleyPoint(element) {
@@ -1349,95 +1554,12 @@
     });
   }
 
-  function buildVolleyEvent(type, teamNumber, extra) {
-    const teamName = teamNumber === 2
-      ? volleyState.volleyTeam2Name
-      : volleyState.volleyTeam1Name;
-
-    return {
-      id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-      type: type,
-      teamNumber: teamNumber,
-      teamName: teamName,
-      points1: type === 'point' && teamNumber === 1
-        ? volleyState.volleyPoints1 + 1
-        : volleyState.volleyPoints1,
-      points2: type === 'point' && teamNumber === 2
-        ? volleyState.volleyPoints2 + 1
-        : volleyState.volleyPoints2,
-      sets1: type === 'set' && teamNumber === 1
-        ? volleyState.volleySets1 + 1
-        : volleyState.volleySets1,
-      sets2: type === 'set' && teamNumber === 2
-        ? volleyState.volleySets2 + 1
-        : volleyState.volleySets2,
-      createdAt: firebase.database.ServerValue.TIMESTAMP,
-      note: extra || ''
-    };
-  }
-
-  function renderVolleyEventIfNeeded() {
-    const event = volleyState.volleyLastEvent;
-    if (!event || !event.id || event.id === volleyLastRenderedEventId) return;
-
-    const createdAt = Number(event.createdAt || 0);
-    if (createdAt && volleyServerNow() - createdAt > 12000) {
-      volleyLastRenderedEventId = event.id;
-      return;
-    }
-
-    volleyLastRenderedEventId = event.id;
-    clearTimeout(volleyEventTimer);
-
-    if (event.type === 'set') {
-      volleyElements.eventIcon.textContent = '🏆';
-      volleyElements.eventTitle.textContent = 'Set para ' + event.teamName;
-      volleyElements.eventSubtitle.textContent = 'Comienza el set ' + (Number(event.sets1 || 0) + Number(event.sets2 || 0) + 1);
-      volleyElements.eventScore.textContent = (event.sets1 || 0) + ' – ' + (event.sets2 || 0) + ' sets';
-    } else if (event.type === 'resetSet') {
-      volleyElements.eventIcon.textContent = '↺';
-      volleyElements.eventTitle.textContent = 'Nuevo set';
-      volleyElements.eventSubtitle.textContent = 'Puntos reiniciados';
-      volleyElements.eventScore.textContent = '0 – 0';
-    } else {
-      volleyElements.eventIcon.textContent = '🏐';
-      volleyElements.eventTitle.textContent = 'Punto para ' + event.teamName;
-      volleyElements.eventSubtitle.textContent = 'Set ' + currentVolleySetNumber();
-      volleyElements.eventScore.textContent = (event.points1 || 0) + ' – ' + (event.points2 || 0);
-    }
-
-    volleyElements.eventOverlay.classList.add('show');
-    volleyEventTimer = setTimeout(function () {
-      volleyElements.eventOverlay.classList.remove('show');
-    }, VOLLEY_EVENT_DURATION_MS);
-  }
-
-  function addVolleyPoint(teamNumber, showEvent) {
+  function addVolleyPoint(teamNumber) {
     if (!volleyIsAdmin) return;
 
-    const pointKey = teamNumber === 2 ? 'volleyPoints2' : 'volleyPoints1';
-    const pointRef = volleyMatchReference.child(pointKey);
-
-    pointRef.transaction(function (current) {
-      return volleySafeInteger(current, 0) + 1;
-    }).then(function (result) {
-      if (!result.committed) return;
-
-      const newPoints = volleySafeInteger(result.snapshot.val(), 0);
-
-      if (showEvent) {
-        const event = buildVolleyEvent('point', teamNumber);
-        event.points1 = teamNumber === 1 ? newPoints : volleyState.volleyPoints1;
-        event.points2 = teamNumber === 2 ? newPoints : volleyState.volleyPoints2;
-        event.createdAt = firebase.database.ServerValue.TIMESTAMP;
-
-        return volleyMatchReference.update({
-          volleyLastEvent: event
-        });
-      }
-    }).catch(function (error) {
-      console.error('Error al sumar punto:', error);
-    });
+    const key = teamNumber === 2 ? 'volleyPoints2' : 'volleyPoints1';
+    const next = volleySafeInteger(volleyState[key], 0) + 1;
+    updateVolleyState({ [key]: next });
   }
 
   function adjustVolleyValue(category, teamNumber, delta) {
@@ -1448,49 +1570,18 @@
     updateVolleyState({ [key]: next });
   }
 
-  function awardVolleySet(teamNumber) {
+  function setVolleyWinner(teamNumber) {
     if (!volleyIsAdmin) return;
-
-    volleyMatchReference.transaction(function (current) {
-      const next = normalizeVolleyState(current || volleyDefaults);
-      const setKey = teamNumber === 2 ? 'volleySets2' : 'volleySets1';
-
-      next[setKey] += 1;
-      next.volleyPoints1 = 0;
-      next.volleyPoints2 = 0;
-
-      next.volleyLastEvent = {
-        id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-        type: 'set',
-        teamNumber: teamNumber,
-        teamName: teamNumber === 2 ? next.volleyTeam2Name : next.volleyTeam1Name,
-        points1: 0,
-        points2: 0,
-        sets1: next.volleySets1,
-        sets2: next.volleySets2,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        note: ''
-      };
-
-      return next;
-    }).catch(function (error) {
-      console.error('Error al cerrar set:', error);
-    });
+    const key = teamNumber === 2 ? 'volleySets2' : 'volleySets1';
+    const next = volleySafeInteger(volleyState[key], 0) + 1;
+    updateVolleyState({ [key]: next });
   }
 
   function resetVolleyCurrentSet() {
     if (!volleyIsAdmin) return;
-
     updateVolleyState({
       volleyPoints1: 0,
-      volleyPoints2: 0,
-      volleyLastEvent: {
-        id: Date.now() + '-reset',
-        type: 'resetSet',
-        points1: 0,
-        points2: 0,
-        createdAt: firebase.database.ServerValue.TIMESTAMP
-      }
+      volleyPoints2: 0
     });
   }
 
@@ -1510,8 +1601,7 @@
       volleyPoints1: 0,
       volleyPoints2: 0,
       volleySets1: 0,
-      volleySets2: 0,
-      volleyLastEvent: null
+      volleySets2: 0
     }));
   }
 
@@ -1539,7 +1629,7 @@
 
     if (snapshot.val() === true) {
       dot.className = 'online';
-      text.textContent = 'Conectado — cambios en vivo';
+      text.textContent = 'Conectado — cambios manuales en vivo';
 
       const status = document.getElementById('volleyStatusText');
       if (status) status.textContent = 'EN VIVO · SINCRONIZADO · PUNTOS DEL SET ACTUAL';
@@ -1566,7 +1656,7 @@
 
     volleyMatchReference.once('value').then(function (snapshot) {
       if (!snapshot.val()) {
-        return volleyMatchReference.set(volleyDefaults);
+        return volleyMatchReference.set(deepCopy(volleyDefaults));
       }
     });
   }
@@ -1632,20 +1722,19 @@
   });
 
   document.getElementById('volleyPointTeam1').addEventListener('click', function () {
-    addVolleyPoint(1, true);
+    addVolleyPoint(1);
   });
 
   document.getElementById('volleyPointTeam2').addEventListener('click', function () {
-    addVolleyPoint(2, true);
+    addVolleyPoint(2);
   });
 
-
-  document.getElementById('volleyWinSetTeam1').addEventListener('click', function () {
-    awardVolleySet(1);
+  document.getElementById('volleyManualSetTeam1').addEventListener('click', function () {
+    setVolleyWinner(1);
   });
 
-  document.getElementById('volleyWinSetTeam2').addEventListener('click', function () {
-    awardVolleySet(2);
+  document.getElementById('volleyManualSetTeam2').addEventListener('click', function () {
+    setVolleyWinner(2);
   });
 
   document.getElementById('volleyResetCurrentSet').addEventListener('click', resetVolleyCurrentSet);
