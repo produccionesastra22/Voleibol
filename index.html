@@ -28,17 +28,19 @@
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
 
   :root {
-    --panel: #11141b;
-    --panel-soft: #181c25;
-    --panel-lighter: #222735;
-    --line: rgba(255, 255, 255, 0.10);
-    --text: #f7f8fb;
-    --muted: #929aab;
-    --blue: #4b82ff;
-    --green: #35d07f;
-    --red: #ff4d62;
-    --orange: #ff9f43;
-    --shadow: 0 18px 55px rgba(0, 0, 0, 0.46);
+    --panel: #090d16;
+    --panel-soft: #111827;
+    --panel-lighter: #1a2232;
+    --line: rgba(255,255,255,.10);
+    --text: #f8fafc;
+    --muted: #9aa6b8;
+    --blue: #5b8cff;
+    --blue-2: #7c5cff;
+    --green: #39e58c;
+    --red: #ff536b;
+    --orange: #ffad4d;
+    --cyan: #48d8ff;
+    --shadow: 0 26px 80px rgba(0,0,0,.55);
   }
 
   * { box-sizing: border-box; }
@@ -76,24 +78,35 @@
     min-width: 790px;
     max-width: 100%;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 18px;
-    background: rgba(10, 12, 17, 0.95);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(18px);
+    position: relative;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 22px;
+    background:
+      radial-gradient(circle at 50% -30%, rgba(91,140,255,.20), transparent 42%),
+      linear-gradient(145deg, rgba(13,18,30,.98), rgba(5,8,14,.98));
+    box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.025) inset;
+    backdrop-filter: blur(20px);
     isolation: isolate;
   }
 
+  #volleyScoreboardWrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(110deg, rgba(255,255,255,.045), transparent 35%, transparent 65%, rgba(255,255,255,.035));
+  }
+
   #volleyBroadcastHeader {
-    height: 31px;
+    height: 36px;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    padding: 0 14px;
+    padding: 0 16px;
     border-bottom: 1px solid var(--line);
     background: linear-gradient(90deg, rgba(255,255,255,.025), rgba(255,255,255,.075), rgba(255,255,255,.025));
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
   }
@@ -102,27 +115,36 @@
     justify-self: start;
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    color: #dce1ec;
+    gap: 8px;
+    color: #eef3ff;
+    font-weight: 800;
   }
 
   #volleyLiveDot {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--green);
-    box-shadow: 0 0 0 4px rgba(53, 208, 127, .12);
+    box-shadow: 0 0 0 5px rgba(57,229,140,.10), 0 0 16px rgba(57,229,140,.55);
     animation: volleyLivePulse 1.6s ease-in-out infinite;
   }
 
   #volleySetLabel {
+    justify-self: center;
+    padding: 5px 13px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,.055);
     color: #fff;
-    font-weight: 800;
+    font-weight: 900;
+    letter-spacing: 1.6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.16);
   }
 
   #volleyMatchLabel {
     justify-self: end;
-    color: var(--muted);
+    color: #8995aa;
+    font-weight: 700;
   }
 
   @keyframes volleyLivePulse {
@@ -131,8 +153,8 @@
 
   #volleyScoreboard {
     display: grid;
-    grid-template-columns: minmax(245px, 1fr) 270px minmax(245px, 1fr);
-    min-height: 112px;
+    grid-template-columns: minmax(250px, 1fr) 292px minmax(250px, 1fr);
+    min-height: 128px;
   }
 
   .volley-team {
@@ -140,7 +162,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 16px 18px;
+    padding: 18px 20px;
     overflow: hidden;
     color: #fff;
   }
@@ -149,7 +171,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(115deg, rgba(255,255,255,.17), transparent 48%, rgba(0,0,0,.18));
+    background: linear-gradient(115deg, rgba(255,255,255,.20), transparent 46%, rgba(0,0,0,.24));
     pointer-events: none;
   }
 
@@ -159,8 +181,9 @@
     right: 0;
     bottom: 0;
     left: 0;
-    height: 4px;
-    background: rgba(255,255,255,.78);
+    height: 3px;
+    background: linear-gradient(90deg, rgba(255,255,255,.9), rgba(255,255,255,.35));
+    box-shadow: 0 0 18px rgba(255,255,255,.16);
   }
 
   .volley-team.away {
@@ -171,20 +194,20 @@
   .volley-logo-shell {
     position: relative;
     z-index: 1;
-    width: 62px;
-    height: 62px;
-    flex: 0 0 62px;
+    width: 68px;
+    height: 68px;
+    flex: 0 0 68px;
     display: grid;
     place-items: center;
     border: 1px solid rgba(255,255,255,.72);
-    border-radius: 17px;
+    border-radius: 19px;
     background: rgba(255,255,255,.95);
-    box-shadow: 0 8px 22px rgba(0,0,0,.22);
+    box-shadow: 0 10px 28px rgba(0,0,0,.28), 0 0 0 5px rgba(255,255,255,.035);
   }
 
   .volley-logo {
-    width: 51px;
-    height: 51px;
+    width: 56px;
+    height: 56px;
     object-fit: contain;
   }
 
@@ -212,7 +235,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 28px;
+    font-size: 31px;
     font-weight: 900;
     line-height: 1;
     letter-spacing: .8px;
@@ -244,6 +267,7 @@
 
   #volleyCenter {
     position: relative;
+    overflow: hidden;
     display: grid;
     grid-template-columns: 1fr 34px 1fr;
     align-items: center;
@@ -253,6 +277,33 @@
       linear-gradient(180deg, #151925, #0c0f15);
     border-right: 1px solid var(--line);
     border-left: 1px solid var(--line);
+  }
+
+
+  #volleyCenter::before {
+    content: 'SET ACTUAL';
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #71809a;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 2px;
+  }
+
+  #volleyCenter::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 150px;
+    height: 150px;
+    transform: translate(-50%,-50%);
+    border: 1px solid rgba(91,140,255,.06);
+    border-radius: 50%;
+    pointer-events: none;
   }
 
   .volley-points-column {
@@ -274,12 +325,12 @@
     display: block;
     min-width: 82px;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 64px;
+    font-size: 70px;
     font-weight: 900;
     line-height: .95;
     letter-spacing: 1px;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 4px 20px rgba(0,0,0,.4);
+    text-shadow: 0 7px 28px rgba(0,0,0,.48), 0 0 18px rgba(91,140,255,.12);
     transition: transform .16s ease;
   }
 
@@ -292,27 +343,27 @@
   }
 
   #volleyDivider {
-    color: #60697a;
+    color: #5c6880;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 42px;
+    font-size: 48px;
     font-weight: 500;
     text-align: center;
   }
 
   #volleyStatusBar {
-    min-height: 30px;
+    min-height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 9px;
     padding: 5px 14px;
     border-top: 1px solid var(--line);
-    background: rgba(255,255,255,.035);
+    background: linear-gradient(90deg, rgba(255,255,255,.025), rgba(91,140,255,.07), rgba(255,255,255,.025));
     color: #d9deea;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1.25px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
   }
 
@@ -346,9 +397,10 @@
     padding: 11px 16px 11px 11px;
     overflow: hidden;
     border: 1px solid rgba(255,255,255,.16);
-    border-radius: 15px;
-    background: rgba(15,18,25,.96);
-    box-shadow: 0 16px 40px rgba(0,0,0,.38);
+    border-radius: 18px;
+    background:
+      linear-gradient(145deg, rgba(21,27,41,.98), rgba(8,12,20,.98));
+    box-shadow: 0 20px 55px rgba(0,0,0,.48), 0 0 0 1px rgba(91,140,255,.06) inset;
     backdrop-filter: blur(16px);
   }
 
@@ -420,8 +472,10 @@
     overflow-y: auto;
     padding: 22px;
     border-left: 1px solid var(--line);
-    background: #10131a;
-    box-shadow: -12px 0 42px rgba(0,0,0,.52);
+    background:
+      radial-gradient(circle at 100% 0%, rgba(91,140,255,.10), transparent 35%),
+      #0b101a;
+    box-shadow: -20px 0 60px rgba(0,0,0,.58);
     transform: translateX(101%);
     transition: transform .28s ease;
     z-index: 1000;
