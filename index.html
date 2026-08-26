@@ -3,44 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Marcador de Volleyball</title>
+<title>Marcador de Voleibol simple</title>
 
 <!--
-  MARCADOR DE VOLLEYBALL — ASTRA PRODS
+  ==========================================================================
+  CÓMO FUNCIONA ESTE MARCADOR
+  ==========================================================================
+  Igual que el marcador de fútbol simple: sin fondo, sin cajas, sin diseño
+  fijo. Solo 9 piezas de información que vos posicionás donde quieras:
+  nombre local, nombre visitante, escudo local, escudo visitante, puntos
+  del set actual (local/visitante), sets ganados (local/visitante) y el
+  rótulo de set actual ("SET 2").
 
-  Este archivo utiliza una ruta y variables diferentes a las del marcador
-  de fútbol para evitar cualquier conflicto:
+  Diseñás el "marco" aparte (por ejemplo en Affinity), lo ponés en OBS
+  como una fuente, y agregás este archivo ENCIMA como otra fuente de
+  navegador transparente, moviendo cada dato desde el panel de
+  administración hasta que calce con tu diseño.
 
-    Firebase: marcadoresVolleyball/<volleyMatchId>
-    URL:      ?volleyMatch=nombre
+  Usa un nodo de Firebase propio para no chocar con los otros marcadores:
+    Firebase: marcadorVolleySimple/<matchId>
+    Admin:    ?admin=1&match=nombre
+    OBS:      ?match=nombre
 
-  Modo administrador:
-    ?admin=1&volleyMatch=nombre
-
-  Vista pública / OBS:
-    ?volleyMatch=nombre
+  CONFIGURACIÓN DE FIREBASE (una sola vez, si no la hiciste ya):
+  1. https://console.firebase.google.com -> tu proyecto -> Realtime Database.
+  2. En "Reglas" pega esto y publica:
+       { "rules": { ".read": true, ".write": true } }
+  ==========================================================================
 -->
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
 
   :root {
-    --panel: #090d16;
-    --panel-soft: #111827;
-    --panel-lighter: #1a2232;
-    --line: rgba(255,255,255,.10);
-    --text: #f8fafc;
-    --muted: #9aa6b8;
-    --blue: #5b8cff;
-    --blue-2: #7c5cff;
-    --green: #39e58c;
-    --red: #ff536b;
-    --orange: #ffad4d;
-    --cyan: #48d8ff;
-    --shadow: 0 26px 80px rgba(0,0,0,.55);
+    --panel: #121620;
+    --line: rgba(255, 255, 255, 0.1);
+    --text: #f7f8fb;
+    --muted: #929aab;
+    --blue: #4b82ff;
+    --green: #35d07f;
+    --red: #ff4d62;
   }
 
   * { box-sizing: border-box; }
@@ -51,1713 +56,938 @@
     margin: 0;
     padding: 0;
     background: transparent;
+    overflow: hidden;
   }
 
   body {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    color: var(--text);
     font-family: 'Inter', sans-serif;
+    color: var(--text);
   }
 
-  button, input { font: inherit; }
+  /* Cuadro de referencia visible SOLO en modo admin, para ver los límites
+     del lienzo mientras ajustás posiciones. Nunca aparece en la salida
+     limpia que usa OBS. */
+  body.admin-mode {
+    background-image:
+      linear-gradient(45deg, #1a1e27 25%, transparent 25%),
+      linear-gradient(-45deg, #1a1e27 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1a1e27 75%),
+      linear-gradient(-45deg, transparent 75%, #1a1e27 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+    background-color: #0b0d12;
+  }
 
-  /* ============================== MARCADOR ============================== */
-  #volleyStage {
+  button, input, select { font: inherit; }
+
+  /* ============================== LIENZO ============================== */
+  #stage {
     position: relative;
-    width: fit-content;
-    max-width: calc(100vw - 24px);
-    padding: 8px 8px 112px;
+    width: 100vw;
+    height: 100vh;
   }
 
-  #volleyScoreboardWrapper {
-    width: fit-content;
-    min-width: 790px;
-    max-width: 100%;
-    overflow: hidden;
-    position: relative;
-    border: 1px solid rgba(255,255,255,.13);
-    border-radius: 22px;
-    background:
-      radial-gradient(circle at 50% -30%, rgba(91,140,255,.20), transparent 42%),
-      linear-gradient(145deg, rgba(13,18,30,.98), rgba(5,8,14,.98));
-    box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.025) inset;
-    backdrop-filter: blur(20px);
-    isolation: isolate;
-  }
-
-  #volleyScoreboardWrapper::before {
-    content: '';
+  .stage-el {
     position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(110deg, rgba(255,255,255,.045), transparent 35%, transparent 65%, rgba(255,255,255,.035));
-  }
-
-  #volleyBroadcastHeader {
-    height: 36px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    padding: 0 16px;
-    border-bottom: 1px solid var(--line);
-    background: linear-gradient(90deg, rgba(255,255,255,.025), rgba(255,255,255,.075), rgba(255,255,255,.025));
+    white-space: nowrap;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-
-  #volleyLiveBadge {
-    justify-self: start;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: #eef3ff;
     font-weight: 800;
+    text-transform: uppercase;
+    line-height: 1;
   }
 
-  #volleyLiveDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 0 5px rgba(57,229,140,.10), 0 0 16px rgba(57,229,140,.55);
-    animation: volleyLivePulse 1.6s ease-in-out infinite;
+  .stage-el.logo-el {
+    white-space: normal;
   }
 
-  #volleySetLabel {
-    justify-self: center;
-    padding: 5px 13px;
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: 999px;
-    background: rgba(255,255,255,.055);
-    color: #fff;
-    font-weight: 900;
-    letter-spacing: 1.6px;
-    box-shadow: 0 6px 18px rgba(0,0,0,.16);
-  }
-
-  #volleyMatchLabel {
-    justify-self: end;
-    color: #8995aa;
-    font-weight: 700;
-  }
-
-  @keyframes volleyLivePulse {
-    50% { transform: scale(.78); opacity: .62; }
-  }
-
-  #volleyScoreboard {
-    display: grid;
-    grid-template-columns: minmax(250px, 1fr) 292px minmax(250px, 1fr);
-    min-height: 128px;
-  }
-
-  .volley-team {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 18px 20px;
-    overflow: hidden;
-    color: #fff;
-  }
-
-  .volley-team::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(115deg, rgba(255,255,255,.20), transparent 46%, rgba(0,0,0,.24));
-    pointer-events: none;
-  }
-
-  .volley-team::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background: linear-gradient(90deg, rgba(255,255,255,.9), rgba(255,255,255,.35));
-    box-shadow: 0 0 18px rgba(255,255,255,.16);
-  }
-
-  .volley-team.away {
-    flex-direction: row-reverse;
-    text-align: right;
-  }
-
-  .volley-logo-shell {
-    position: relative;
-    z-index: 1;
-    width: 68px;
-    height: 68px;
-    flex: 0 0 68px;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgba(255,255,255,.72);
-    border-radius: 19px;
-    background: rgba(255,255,255,.95);
-    box-shadow: 0 10px 28px rgba(0,0,0,.28), 0 0 0 5px rgba(255,255,255,.035);
-  }
-
-  .volley-logo {
-    width: 56px;
-    height: 56px;
+  .stage-el img {
+    display: block;
+    width: 100%;
+    height: auto;
     object-fit: contain;
   }
 
-  .volley-team-copy {
-    position: relative;
-    z-index: 1;
-    min-width: 0;
+  body.admin-mode .stage-el {
+    outline: 1px dashed rgba(255, 255, 255, .28);
+    outline-offset: 3px;
   }
 
-  .volley-team-role {
-    display: block;
-    margin-bottom: 3px;
-    font-family: 'Barlow Condensed', sans-serif;
+  /* ============================== ADMINISTRACIÓN ============================== */
+  #adminToggle {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 999;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 15px;
+    background: rgba(17, 20, 27, .9);
+    color: #fff;
+    box-shadow: 0 10px 28px rgba(0,0,0,.35);
+    cursor: pointer;
+    opacity: .55;
+    transition: .2s ease;
+  }
+  #adminToggle:hover { opacity: 1; transform: translateY(-2px); }
+
+  #adminPanel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1000;
+    width: 430px;
+    max-width: 96vw;
+    height: 100vh;
+    overflow-y: auto;
+    background: #0c0f15;
+    color: var(--text);
+    border-left: 1px solid var(--line);
+    box-shadow: -20px 0 50px rgba(0,0,0,.46);
+    transform: translateX(102%);
+    transition: transform .3s cubic-bezier(.2,.8,.2,1);
+  }
+  #adminPanel.open { transform: translateX(0); }
+
+  .admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: 18px 20px 14px;
+    background: rgba(12,15,21,.96);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .admin-kicker {
+    color: #78a1ff;
     font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1.7px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    opacity: .72;
   }
 
-  .volley-team-name {
-    display: block;
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .admin-header h2 {
+    margin: 3px 40px 3px 0;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 31px;
+    font-size: 24px;
     font-weight: 900;
-    line-height: 1;
-    letter-spacing: .8px;
+    letter-spacing: .5px;
     text-transform: uppercase;
   }
 
-  .volley-sets-line {
+  .admin-subtitle { color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+  #closePanel {
+    position: absolute;
+    top: 15px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #181c25;
+    color: #aab2c2;
+    cursor: pointer;
+  }
+  #closePanel:hover { color: #fff; background: #222735; }
+
+  #connStatus {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    margin-top: 8px;
-    padding: 4px 8px;
-    border: 1px solid rgba(255,255,255,.16);
-    border-radius: 999px;
-    background: rgba(0,0,0,.18);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .8px;
-    text-transform: uppercase;
-  }
-
-  .volley-set-value {
-    min-width: 20px;
-    font-size: 18px;
-    font-weight: 900;
-    text-align: center;
-  }
-
-  #volleyCenter {
-    position: relative;
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: 1fr 34px 1fr;
-    align-items: center;
-    padding: 12px 15px;
-    background:
-      radial-gradient(circle at center, rgba(75,130,255,.16), transparent 62%),
-      linear-gradient(180deg, #151925, #0c0f15);
-    border-right: 1px solid var(--line);
-    border-left: 1px solid var(--line);
-  }
-
-
-  #volleyCenter::before {
-    content: 'SET ACTUAL';
-    position: absolute;
-    top: 7px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #71809a;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 8px;
-    font-weight: 800;
-    letter-spacing: 2px;
-  }
-
-  #volleyCenter::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 150px;
-    height: 150px;
-    transform: translate(-50%,-50%);
-    border: 1px solid rgba(91,140,255,.06);
-    border-radius: 50%;
-    pointer-events: none;
-  }
-
-  .volley-points-column {
-    text-align: center;
-  }
-
-  .volley-points-label {
-    display: block;
-    margin-bottom: -2px;
-    color: var(--muted);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-
-  .volley-points {
-    display: block;
-    min-width: 82px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 70px;
-    font-weight: 900;
-    line-height: .95;
-    letter-spacing: 1px;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 7px 28px rgba(0,0,0,.48), 0 0 18px rgba(91,140,255,.12);
-    transition: transform .16s ease;
-  }
-
-  .volley-points.bump {
-    animation: volleyScoreBump .38s ease;
-  }
-
-  @keyframes volleyScoreBump {
-    45% { transform: scale(1.18); }
-  }
-
-  #volleyDivider {
-    color: #5c6880;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 48px;
-    font-weight: 500;
-    text-align: center;
-  }
-
-  #volleyStatusBar {
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    padding: 5px 14px;
-    border-top: 1px solid var(--line);
-    background: linear-gradient(90deg, rgba(255,255,255,.025), rgba(91,140,255,.07), rgba(255,255,255,.025));
-    color: #d9deea;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-
-
-  /* ============================== EVENTO ============================== */
-  #volleyEventOverlay {
-    position: absolute;
-    right: 8px;
-    bottom: 18px;
-    left: 8px;
-    display: flex;
-    justify-content: center;
-    pointer-events: none;
-    opacity: 0;
-    transform: translateY(20px) scale(.98);
-    transition: opacity .25s ease, transform .32s cubic-bezier(.2,.85,.3,1.1);
-  }
-
-  #volleyEventOverlay.show {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-
-  #volleyEventCard {
-    min-width: 280px;
-    max-width: 620px;
-    display: grid;
-    grid-template-columns: 54px 1fr auto;
-    align-items: center;
-    gap: 13px;
-    padding: 11px 16px 11px 11px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,.16);
-    border-radius: 18px;
-    background:
-      linear-gradient(145deg, rgba(21,27,41,.98), rgba(8,12,20,.98));
-    box-shadow: 0 20px 55px rgba(0,0,0,.48), 0 0 0 1px rgba(91,140,255,.06) inset;
-    backdrop-filter: blur(16px);
-  }
-
-  #volleyEventIcon {
-    width: 45px;
-    height: 45px;
-    display: grid;
-    place-items: center;
-    border-radius: 13px;
-    background: rgba(75,130,255,.17);
-    color: #dfe8ff;
-    font-size: 25px;
-  }
-
-  #volleyEventTitle {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 22px;
-    font-weight: 900;
-    line-height: 1;
-    letter-spacing: .8px;
-    text-transform: uppercase;
-  }
-
-  #volleyEventSubtitle {
-    margin-top: 3px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  #volleyEventScore {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 26px;
-    font-weight: 900;
-    white-space: nowrap;
-  }
-
-  /* ============================== ADMIN ============================== */
-  #volleyAdminToggle {
-    position: fixed;
-    right: 17px;
-    bottom: 17px;
-    width: 44px;
-    height: 44px;
-    border: 1px solid rgba(255,255,255,.14);
-    border-radius: 50%;
-    background: rgba(18,21,28,.92);
-    color: #fff;
-    box-shadow: 0 8px 28px rgba(0,0,0,.35);
-    cursor: pointer;
-    font-size: 19px;
-    opacity: .55;
-    transition: opacity .2s ease, transform .2s ease;
-    z-index: 900;
-  }
-
-  #volleyAdminToggle:hover {
-    opacity: 1;
-    transform: scale(1.06);
-  }
-
-  #volleyAdminPanel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 390px;
-    max-width: 94vw;
-    height: 100vh;
-    overflow-y: auto;
-    padding: 22px;
-    border-left: 1px solid var(--line);
-    background:
-      radial-gradient(circle at 100% 0%, rgba(91,140,255,.10), transparent 35%),
-      #0b101a;
-    box-shadow: -20px 0 60px rgba(0,0,0,.58);
-    transform: translateX(101%);
-    transition: transform .28s ease;
-    z-index: 1000;
-  }
-
-  #volleyAdminPanel.open { transform: translateX(0); }
-
-  #volleyClosePanel {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 9px;
-    background: var(--panel-lighter);
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 17px;
-  }
-
-  .volley-admin-kicker {
-    margin-bottom: 3px;
-    color: var(--blue);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-
-  #volleyAdminPanel h2 {
-    margin: 0;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 25px;
-    line-height: 1;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-  }
-
-  #volleyConnectionStatus {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    margin: 10px 0 18px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 11px;
-  }
-
-  #volleyConnectionDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #666;
-  }
-
-  #volleyConnectionDot.online { background: var(--green); }
-  #volleyConnectionDot.offline { background: var(--red); }
-
-  .volley-admin-section {
-    margin-bottom: 14px;
-    padding: 14px;
+    margin-top: 10px;
+    padding: 5px 9px;
     border: 1px solid var(--line);
-    border-radius: 13px;
-    background: var(--panel-soft);
+    border-radius: 999px;
+    background: rgba(255,255,255,.035);
+    color: #aeb5c4;
+    font-size: 11px;
   }
 
-  .volley-admin-section h3 {
-    margin: 0 0 11px;
+  #connDot { width: 7px; height: 7px; border-radius: 999px; background: #697184; }
+  #connDot.online { background: var(--green); }
+  #connDot.offline { background: var(--red); }
+
+  .admin-content { padding: 14px 14px 26px; }
+
+  .admin-group {
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #121620;
+  }
+
+  .admin-group summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 13px 14px;
+    color: #f2f4f8;
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 16px;
-    letter-spacing: .7px;
+    font-weight: 800;
+    letter-spacing: .5px;
     text-transform: uppercase;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
   }
 
-  .volley-grid-two {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 9px;
-  }
+  .admin-group summary::-webkit-details-marker { display: none; }
+  .admin-group summary::after { content: '+'; color: #788297; font-size: 20px; font-family: 'Inter', sans-serif; font-weight: 400; }
+  .admin-group[open] summary::after { content: '−'; }
+  .admin-group[open] summary { border-bottom: 1px solid var(--line); }
 
-  .volley-field label {
-    display: block;
-    margin: 8px 0 4px;
+  .admin-body { padding: 13px; }
+
+  .section-note {
+    margin: -2px 0 11px;
     color: var(--muted);
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .volley-field:first-child label { margin-top: 0; }
-
-  .volley-field input[type="text"],
-  .volley-field input[type="number"] {
-    width: 100%;
-    min-width: 0;
-    padding: 9px 10px;
-    border: 1px solid #333947;
-    border-radius: 8px;
-    outline: none;
-    background: #0d1016;
-    color: #fff;
-  }
-
-  .volley-field input:focus { border-color: var(--blue); }
-
-  .volley-field input[type="color"] {
-    width: 100%;
-    height: 38px;
-    padding: 3px;
-    border: 1px solid #333947;
-    border-radius: 8px;
-    background: #0d1016;
-    cursor: pointer;
-  }
-
-  .volley-score-control {
-    display: grid;
-    grid-template-columns: 46px 1fr 46px;
-    gap: 7px;
-    align-items: center;
-  }
-
-  .volley-score-control input {
-    text-align: center;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 26px;
-    font-weight: 900;
-  }
-
-  .volley-btn {
-    border: none;
-    border-radius: 9px;
-    padding: 10px 9px;
-    background: var(--panel-lighter);
-    color: #fff;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    transition: filter .16s ease, transform .12s ease;
-  }
-
-  .volley-btn:hover { filter: brightness(1.15); }
-  .volley-btn:active { transform: scale(.97); }
-  .volley-btn.primary { background: var(--blue); }
-  .volley-btn.success { background: #168c58; }
-  .volley-btn.danger { background: #c83d50; }
-  .volley-btn.warning { background: #a96317; }
-
-  .volley-team-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 9px;
-  }
-
-  .volley-action-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .volley-action-grid .wide { grid-column: 1 / -1; }
-
-
-  .volley-hint {
-    margin-top: 10px;
-    color: #747d8f;
-    font-size: 11px;
-    line-height: 1.5;
-  }
-
-  #volleyShareBtn {
-    width: 100%;
-    margin-top: 2px;
-  }
-
-  /* ============================== LOCK ============================== */
-  #volleyLockScreen {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 18px;
-    background: rgba(0,0,0,.78);
-    backdrop-filter: blur(8px);
-    z-index: 2000;
-  }
-
-  #volleyLockBox {
-    width: 300px;
-    max-width: 100%;
-    padding: 27px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    background: #151922;
-    box-shadow: 0 18px 60px rgba(0,0,0,.52);
-    text-align: center;
-  }
-
-  #volleyLockTitle {
-    margin-bottom: 15px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-
-  #volleyLockInput {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 11px;
-    border: 1px solid #353b49;
-    border-radius: 9px;
-    outline: none;
-    background: #0c0f15;
-    color: #fff;
-    text-align: center;
-  }
-
-  #volleyLockSubmit {
-    width: 100%;
-    padding: 11px;
-    border: none;
-    border-radius: 9px;
-    background: var(--blue);
-    color: #fff;
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-  #volleyLockError {
-    display: none;
-    margin-top: 10px;
-    color: var(--red);
-    font-size: 12px;
-  }
-
-  #volleyLockError.show { display: block; }
-
-  @media (max-width: 830px) {
-    body { overflow: auto; }
-    #volleyStage { transform-origin: center; }
-    #volleyScoreboardWrapper { min-width: 680px; }
-    #volleyScoreboard { grid-template-columns: 215px 250px 215px; }
-    .volley-team-name { max-width: 145px; font-size: 24px; }
-  }
-
-  /* ASTRA ARENA — second visual direction */
-  #volleyScoreboardWrapper {
-    border-radius: 0;
-    min-width: 980px;
-    background:
-      linear-gradient(180deg, rgba(8,12,20,.98), rgba(3,6,11,.99));
-    border: 1px solid rgba(255,255,255,.14);
-    box-shadow:
-      0 35px 100px rgba(0,0,0,.62),
-      0 0 0 1px rgba(91,140,255,.07) inset;
-  }
-
-  #volleyBroadcastHeader {
-    height: 40px;
-    grid-template-columns: 1fr auto 1fr;
-    padding: 0 20px;
-    background: #060a11;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-  }
-
-  #volleyLiveBadge {
-    font-size: 11px;
-    letter-spacing: 1.7px;
-    text-transform: uppercase;
-  }
-
-  #volleySetLabel {
-    min-width: 125px;
-    padding: 7px 18px;
-    border-radius: 3px;
-    background: linear-gradient(180deg,#182337,#0d1420);
-    border: 1px solid rgba(255,255,255,.14);
-    font-size: 12px;
-    letter-spacing: 2.2px;
-  }
-
-  #volleyMatchLabel {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-
-  #volleyScoreboard {
-    grid-template-columns: minmax(310px, 1fr) 320px minmax(310px, 1fr);
-    min-height: 170px;
-    position: relative;
-  }
-
-  .volley-team-panel {
-    position: relative;
-    overflow: hidden;
-    padding: 24px 28px;
-  }
-
-  .volley-team-panel::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 45%;
-    pointer-events: none;
-    opacity: .45;
-  }
-
-  .volley-team-panel:first-child::after {
-    left: 0;
-    background: linear-gradient(90deg, rgba(91,140,255,.16), transparent);
-  }
-
-  .volley-team-panel:last-child::after {
-    right: 0;
-    background: linear-gradient(270deg, rgba(124,92,255,.16), transparent);
-  }
-
-  .volley-team-name {
-    font-size: 25px !important;
-    letter-spacing: .8px;
-    text-transform: uppercase;
-    font-weight: 900 !important;
-  }
-
-  .volley-team-code {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 2px;
-    color: #728098;
-    text-transform: uppercase;
-  }
-
-  .volley-logo {
-    width: 78px !important;
-    height: 78px !important;
-    border-radius: 4px !important;
-    background: linear-gradient(145deg,#202b3f,#0c111a) !important;
-    border: 1px solid rgba(255,255,255,.13);
-    box-shadow: 0 15px 35px rgba(0,0,0,.38), 0 0 0 4px rgba(255,255,255,.025);
-  }
-
-  .volley-points {
-    font-size: 92px !important;
-    line-height: .78 !important;
-    font-weight: 900 !important;
-    letter-spacing: -4px;
-  }
-
-  #volleyCenter {
-    min-height: 170px;
-    background:
-      radial-gradient(circle at 50% 42%, rgba(91,140,255,.13), transparent 54%),
-      linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.008));
-    border-left: 1px solid rgba(255,255,255,.08);
-    border-right: 1px solid rgba(255,255,255,.08);
-  }
-
-  #volleyCenter::before {
-    top: 10px;
-    color: #697890;
-    font-size: 9px;
-    letter-spacing: 3px;
-  }
-
-  /* BIG SET SCORE */
-  #volleySetsScore {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    gap: 26px;
-    margin-top: 25px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 62px !important;
-    line-height: 1;
-    font-weight: 900;
-    letter-spacing: -2px;
-  }
-
-  #volleySetsScore .set-number {
-    min-width: 76px;
-    text-align: center;
-    padding: 8px 12px 2px;
-    border: 1px solid rgba(255,255,255,.11);
-    background: rgba(255,255,255,.035);
-    box-shadow: inset 0 -8px 20px rgba(0,0,0,.15);
-  }
-
-  #volleySetsScore .set-divider {
-    color: #66738b;
-    font-size: 42px;
-  }
-
-  .volley-set-caption {
-    margin-top: 4px;
-    color: #68758b;
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: 2.4px;
-    text-transform: uppercase;
-  }
-
-  /* A dedicated five-box set history row. */
-  #volleySetHistory {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 7px;
-    padding: 10px 18px 12px;
-    background: #060a11;
-    border-top: 1px solid rgba(255,255,255,.07);
-  }
-
-  #volleySetHistory .set-history-box {
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 1px solid rgba(255,255,255,.08);
-    background: rgba(255,255,255,.025);
-    color: #78859b;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: .5px;
-  }
-
-  #volleySetHistory .set-history-box.active {
-    color: #fff;
-    border-color: rgba(91,140,255,.42);
-    background: rgba(91,140,255,.10);
-    box-shadow: inset 0 -2px 0 rgba(91,140,255,.65);
-  }
-
-  #volleySetHistory .set-history-box.won {
-    color: #fff;
-    border-color: rgba(57,229,140,.34);
-    background: rgba(57,229,140,.07);
-  }
-
-  #volleyStatusBar {
-    min-height: 38px;
-    background: #080c14;
-    border-top: 1px solid rgba(255,255,255,.055);
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  @media (max-width: 1000px) {
-    #volleyScoreboardWrapper { min-width: 0; width: 100%; }
-    #volleyScoreboard { grid-template-columns: 1fr 230px 1fr; }
-    .volley-team-name { font-size: 18px !important; }
-    .volley-points { font-size: 68px !important; }
-    #volleySetsScore { font-size: 48px !important; gap: 12px; }
-  }
-
-  @media (max-width: 700px) {
-    #volleyBroadcastHeader { grid-template-columns: 1fr auto; }
-    #volleyMatchLabel { display: none; }
-    #volleyScoreboard { grid-template-columns: 1fr; }
-    #volleyCenter { order: 3; border-left: 0; border-right: 0; }
-    .volley-team-panel { min-height: 120px; }
-  }
-
-  /* ================================================================
-     ASTRA VOLLEY // MANUAL PRO — visual direction
-     Clean arena board, oversized scores, editable-first composition.
-     ================================================================ */
-  body {
-    background:
-      radial-gradient(circle at 50% -20%, rgba(91,140,255,.16), transparent 38%),
-      #02050a !important;
-  }
-
-  #volleyScoreboardWrapper {
-    width: min(1240px, 96vw);
-    min-width: 0;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,.12);
-    background: #05080d;
-    box-shadow: 0 30px 90px rgba(0,0,0,.62);
-  }
-
-  #volleyBroadcastHeader {
-    height: 48px;
-    padding: 0 24px;
-    background: #070b11;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-  }
-
-  #volleyLiveBadge {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  #volleySetLabel {
-    min-width: 160px;
-    padding: 8px 22px;
-    border-radius: 4px;
-    background: #101721;
-    border: 1px solid rgba(255,255,255,.12);
-    font-size: 12px;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-  }
-
-  #volleyMatchLabel {
-    color: #8995a8;
-    font-size: 10px;
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
-  }
-
-  #volleyScoreboard {
-    grid-template-columns: minmax(0, 1fr) 360px minmax(0, 1fr);
-    min-height: 230px;
-  }
-
-  .volley-team-panel {
-    padding: 30px 34px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .volley-team-panel:first-child {
-    border-right: 1px solid rgba(255,255,255,.07);
-  }
-
-  .volley-team-panel:last-child {
-    border-left: 1px solid rgba(255,255,255,.07);
-  }
-
-  .volley-team-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: .65;
-  }
-
-  .volley-team-panel:first-child::before {
-    background: linear-gradient(90deg, rgba(91,140,255,.14), transparent 55%);
-  }
-
-  .volley-team-panel:last-child::before {
-    background: linear-gradient(270deg, rgba(255,77,109,.14), transparent 55%);
-  }
-
-  .volley-logo {
-    width: 92px !important;
-    height: 92px !important;
-    border-radius: 8px !important;
-    border: 1px solid rgba(255,255,255,.14);
-    box-shadow: 0 16px 35px rgba(0,0,0,.38);
-  }
-
-  .volley-team-name {
-    font-size: clamp(24px, 3vw, 38px) !important;
-    line-height: .95;
-    letter-spacing: .5px;
-    font-weight: 900 !important;
-    text-transform: uppercase;
-  }
-
-  .volley-points {
-    font-size: clamp(100px, 11vw, 154px) !important;
-    line-height: .72 !important;
-    letter-spacing: -7px;
-    font-weight: 900 !important;
-  }
-
-  .volley-set-value {
-    font-size: 27px !important;
-    padding: 3px 10px;
-    min-width: 40px;
-    display: inline-block;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,.12);
-    background: rgba(255,255,255,.04);
-    border-radius: 4px;
-  }
-
-  #volleyCenter {
-    min-height: 230px;
-    background:
-      radial-gradient(circle at 50% 45%, rgba(255,255,255,.07), transparent 55%),
-      #070b12;
-  }
-
-  #volleyCenter::before {
-    content: 'MARCADOR MANUAL';
-    top: 14px;
-    color: #67748a;
-    font-size: 9px;
-    letter-spacing: 3px;
-  }
-
-  #volleySetsScore {
-    margin-top: 36px;
-    gap: 12px;
-    font-size: 86px !important;
-    font-weight: 900;
-    letter-spacing: -5px;
-  }
-
-  #volleySetsScore .set-number {
-    min-width: 92px;
-    padding: 10px 14px 5px;
-    border-radius: 5px;
-    background: #0c121b;
-    border: 1px solid rgba(255,255,255,.12);
-  }
-
-  #volleySetsScore .set-divider {
-    font-size: 52px;
-    color: #4e5b70;
-  }
-
-  .volley-set-caption {
-    margin-top: 12px;
-    font-size: 9px;
-    letter-spacing: 3px;
-    color: #69778e;
-  }
-
-  #volleySetHistory {
-    display: none !important;
-  }
-
-  #volleyStatusBar {
-    min-height: 42px;
-    padding: 0 20px;
-    background: #070b11;
-    border-top: 1px solid rgba(255,255,255,.07);
-    text-transform: uppercase;
-    letter-spacing: 1.6px;
-    font-size: 10px;
-  }
-
-  /* Editable admin: dense control board */
-  #volleyAdminPanel {
-    width: min(430px, 94vw);
-    background: #080d14;
-    border-left: 1px solid rgba(255,255,255,.12);
-  }
-
-  .volley-admin-section {
-    border: 1px solid rgba(255,255,255,.08);
-    background: #0c121a;
-    border-radius: 8px;
-  }
-
-  .volley-admin-section h3 {
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-
-  .volley-score-control input,
-  .volley-field input {
-    border-radius: 5px !important;
-    background: #05080d !important;
-    border-color: rgba(255,255,255,.12) !important;
-  }
-
-  .volley-btn {
-    border-radius: 5px !important;
-    font-weight: 800;
-  }
-
-  .volley-manual-note {
-    padding: 10px 12px;
-    border: 1px dashed rgba(255,255,255,.13);
-    border-radius: 6px;
-    color: #7f8ca1;
     font-size: 11px;
     line-height: 1.45;
   }
 
-  @media (max-width: 900px) {
-    #volleyScoreboard { grid-template-columns: 1fr 260px 1fr; }
-    .volley-team-panel { padding: 24px 18px; }
-    .volley-logo { width: 70px !important; height: 70px !important; }
-    #volleySetsScore { font-size: 64px !important; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .field-grid.one { grid-template-columns: 1fr; }
+  .field-grid.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .field { min-width: 0; }
+  .field.full { grid-column: 1 / -1; }
+
+  #adminPanel label:not(.switch-row) {
+    display: block;
+    margin: 0 0 4px;
+    color: #a4adbd;
+    font-size: 10.5px;
+    font-weight: 600;
   }
 
-  @media (max-width: 680px) {
-    #volleyBroadcastHeader { grid-template-columns: 1fr auto; }
-    #volleyMatchLabel { display: none; }
-    #volleyScoreboard { grid-template-columns: 1fr; }
-    #volleyCenter { order: 3; min-height: 170px; }
-    .volley-team-panel { min-height: 170px; }
+  #adminPanel input[type='text'],
+  #adminPanel input[type='number'] {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    padding: 7px 9px;
+    border: 1px solid #2b3240;
+    border-radius: 9px;
+    outline: none;
+    background: #090c11;
+    color: #fff;
+    font-size: 12.5px;
+    transition: border-color .18s, box-shadow .18s;
   }
 
-  #volleyEventOverlay { display: none !important; }
+  #adminPanel input:focus {
+    border-color: #5c88ee;
+    box-shadow: 0 0 0 3px rgba(75,130,255,.12);
+  }
+
+  #adminPanel input[type='color'] {
+    width: 100%;
+    height: 36px;
+    padding: 3px;
+    border: 1px solid #2b3240;
+    border-radius: 9px;
+    background: #090c11;
+    cursor: pointer;
+  }
+
+  #adminPanel select {
+    width: 100%;
+    height: 36px;
+    padding: 6px 8px;
+    border: 1px solid #2b3240;
+    border-radius: 9px;
+    background: #090c11;
+    color: #fff;
+    font-size: 12.5px;
+  }
+
+  .element-card {
+    padding: 11px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+    margin-bottom: 9px;
+  }
+  .element-card:last-child { margin-bottom: 0; }
+
+  .element-title {
+    margin-bottom: 8px;
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+  }
+
+  .button-row { display: flex; gap: 7px; margin-top: 8px; }
+
+  #adminPanel button:not(#closePanel) {
+    min-height: 34px;
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: #315fca;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .15s ease, filter .15s ease;
+  }
+  #adminPanel button:not(#closePanel):hover { filter: brightness(1.12); transform: translateY(-1px); }
+  #adminPanel button.secondary { background: #252b38; border-color: #343c4d; color: #dce1eb; }
+  #adminPanel button.danger { background: #722c38; }
+
+  .score-admin {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 9px;
+    align-items: end;
+  }
+  .score-versus {
+    padding-bottom: 9px;
+    color: #677084;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  #obsLinkBox {
+    display: flex;
+    gap: 7px;
+  }
+  #obsLinkBox input {
+    flex: 1;
+  }
+  #obsLinkBox button {
+    flex: 0 0 auto;
+    width: 90px;
+  }
+
+  .hint {
+    margin-top: 9px;
+    color: #778095;
+    font-size: 10px;
+    line-height: 1.55;
+  }
+
+  /* ============================== CLAVE ============================== */
+  #lockScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,6,9,.86);
+    backdrop-filter: blur(12px);
+  }
+  #lockBox {
+    width: 300px;
+    max-width: 90vw;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #11151d;
+    box-shadow: 0 18px 55px rgba(0,0,0,.46);
+    text-align: center;
+  }
+  #lockTitle {
+    margin-bottom: 15px;
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+  #lockInput {
+    width: 100%;
+    height: 41px;
+    padding: 8px 12px;
+    border: 1px solid #303848;
+    border-radius: 10px;
+    outline: none;
+    background: #090c11;
+    color: #fff;
+    text-align: center;
+  }
+  #lockSubmit {
+    width: 100%;
+    height: 40px;
+    margin-top: 9px;
+    border: 0;
+    border-radius: 10px;
+    background: #315fca;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #lockError { display: none; margin-top: 9px; color: #ff7787; font-size: 11px; }
+  #lockError.show { display: block; }
 </style>
 </head>
 <body>
 
-<div id="volleyStage">
-  <div id="volleyScoreboardWrapper">
-    <div id="volleyBroadcastHeader">
-      <div id="volleyLiveBadge">
-        <span id="volleyLiveDot"></span>
-        <span>En vivo</span>
-      </div>
-      <div id="volleySetLabel">SET 1</div>
-      <div id="volleyMatchLabel">VOLLEYBALL</div>
-    </div>
+  <div id="stage">
+    <div class="stage-el" id="el_name1">LOCAL</div>
+    <div class="stage-el" id="el_name2">VISITANTE</div>
+    <div class="stage-el" id="el_points1">0</div>
+    <div class="stage-el" id="el_points2">0</div>
+    <div class="stage-el" id="el_sets1">0</div>
+    <div class="stage-el" id="el_sets2">0</div>
+    <div class="stage-el" id="el_setLabel">SET 1</div>
+    <div class="stage-el logo-el" id="el_logo1"><img id="img_logo1" src="" alt="Escudo local"></div>
+    <div class="stage-el logo-el" id="el_logo2"><img id="img_logo2" src="" alt="Escudo visitante"></div>
+  </div>
 
-    <div id="volleyScoreboard">
-      <section class="volley-team home" id="volleyTeamHome">
-        <div class="volley-logo-shell">
-          <img class="volley-logo" id="volleyLogo1" src="" alt="Escudo del equipo local">
-        </div>
-        <div class="volley-team-copy">
-          <span class="volley-team-role">Equipo local</span>
-          <span class="volley-team-name" id="volleyName1">LOCAL</span>
-          <span class="volley-sets-line">Sets <strong class="volley-set-value" id="volleySets1">0</strong></span>
-        </div>
-      </section>
-
-      <section id="volleyCenter" aria-label="Puntos del set actual">
-        <div class="volley-points-column">
-          <span class="volley-points-label">Puntos</span>
-          <strong class="volley-points" id="volleyPoints1">0</strong>
-        </div>
-        <div id="volleyDivider">:</div>
-        <div class="volley-points-column">
-          <span class="volley-points-label">Puntos</span>
-          <strong class="volley-points" id="volleyPoints2">0</strong>
-        </div>
-      </section>
-
-      <section class="volley-team away" id="volleyTeamAway">
-        <div class="volley-logo-shell">
-          <img class="volley-logo" id="volleyLogo2" src="" alt="Escudo del equipo visitante">
-        </div>
-        <div class="volley-team-copy">
-          <span class="volley-team-role">Equipo visitante</span>
-          <span class="volley-team-name" id="volleyName2">VISITANTE</span>
-          <span class="volley-sets-line">Sets <strong class="volley-set-value" id="volleySets2">0</strong></span>
-        </div>
-      </section>
-    </div>
-<div id="volleyStatusBar">
-      <span id="volleyStatusText">Puntos del set actual · Sets acumulados</span>
+  <!-- Pantalla de clave para entrar en modo administrador -->
+  <div id="lockScreen" style="display:none;">
+    <div id="lockBox">
+      <div id="lockTitle">🔒 Modo administrador</div>
+      <input type="password" id="lockInput" placeholder="Clave de acceso" autocomplete="off">
+      <button type="button" id="lockSubmit">Entrar</button>
+      <div id="lockError">Clave incorrecta, intenta de nuevo.</div>
     </div>
   </div>
 
-  <div id="volleyEventOverlay" aria-live="polite">
-    <div id="volleyEventCard">
-      <div id="volleyEventIcon">🏐</div>
-      <div>
-        <div id="volleyEventTitle">Punto</div>
-        <div id="volleyEventSubtitle">Equipo local</div>
-      </div>
-      <div id="volleyEventScore">1 – 0</div>
-    </div>
-  </div>
-</div>
+  <!-- El botón y panel de edición solo aparecen si la URL tiene ?admin=1 -->
+  <button id="adminToggle" title="Editar marcador" style="display:none;">⚙</button>
 
-<div id="volleyLockScreen" style="display:none;">
-  <div id="volleyLockBox">
-    <div id="volleyLockTitle">🔒 Administración Volleyball</div>
-    <input type="password" id="volleyLockInput" placeholder="Clave de acceso" autocomplete="off">
-    <button type="button" id="volleyLockSubmit">Entrar</button>
-    <div id="volleyLockError">Clave incorrecta. Intenta de nuevo.</div>
-  </div>
-</div>
-
-<button id="volleyAdminToggle" type="button" title="Editar marcador" style="display:none;">⚙</button>
-
-<aside id="volleyAdminPanel" style="display:none;">
-  <button id="volleyClosePanel" type="button" title="Cerrar">✕</button>
-  <div class="volley-admin-kicker">Astra Prods</div>
-  <h2>Marcador Volleyball</h2>
-  <div id="volleyConnectionStatus">
-    <span id="volleyConnectionDot"></span>
-    <span id="volleyConnectionText">Conectando...</span>
-  </div>
-
-  <section class="volley-admin-section">
-    <h3>Equipo local</h3>
-    <div class="volley-field">
-      <label for="volleyInputTeam1Name">Nombre</label>
-      <input type="text" id="volleyInputTeam1Name">
+  <div id="adminPanel">
+    <div class="admin-header">
+      <button id="closePanel" title="Cerrar" aria-label="Cerrar panel">✕</button>
+      <div class="admin-kicker">Astra Prods · Control</div>
+      <h2>Voleibol simple</h2>
+      <div class="admin-subtitle">Datos del partido y posición de cada elemento sobre tu diseño.</div>
+      <div id="connStatus"><span id="connDot"></span><span id="connText">Conectando...</span></div>
     </div>
-    <div class="volley-field">
-      <label for="volleyInputTeam1Logo">Logo (URL)</label>
-      <input type="text" id="volleyInputTeam1Logo" placeholder="https://...">
-    </div>
-    <div class="volley-grid-two">
-      <div class="volley-field">
-        <label for="volleyInputTeam1Color">Fondo</label>
-        <input type="color" id="volleyInputTeam1Color">
-      </div>
-      <div class="volley-field">
-        <label for="volleyInputTeam1TextColor">Texto</label>
-        <input type="color" id="volleyInputTeam1TextColor">
-      </div>
-    </div>
-  </section>
 
-  <section class="volley-admin-section">
-    <h3>Equipo visitante</h3>
-    <div class="volley-field">
-      <label for="volleyInputTeam2Name">Nombre</label>
-      <input type="text" id="volleyInputTeam2Name">
-    </div>
-    <div class="volley-field">
-      <label for="volleyInputTeam2Logo">Logo (URL)</label>
-      <input type="text" id="volleyInputTeam2Logo" placeholder="https://...">
-    </div>
-    <div class="volley-grid-two">
-      <div class="volley-field">
-        <label for="volleyInputTeam2Color">Fondo</label>
-        <input type="color" id="volleyInputTeam2Color">
-      </div>
-      <div class="volley-field">
-        <label for="volleyInputTeam2TextColor">Texto</label>
-        <input type="color" id="volleyInputTeam2TextColor">
-      </div>
-    </div>
-  </section>
+    <div class="admin-content">
 
-  <section class="volley-admin-section">
-    <h3>Puntos del set actual</h3>
-
-    <div class="volley-grid-two">
-      <div>
-        <div class="volley-field">
-          <label for="volleyInputPoints1">Local</label>
-          <div class="volley-score-control">
-            <button class="volley-btn danger" type="button" data-volley-points-team="1" data-volley-delta="-1">−</button>
-            <input type="number" id="volleyInputPoints1" min="0">
-            <button class="volley-btn primary" type="button" data-volley-points-team="1" data-volley-delta="1">+</button>
+      <details class="admin-group" open>
+        <summary>Equipos</summary>
+        <div class="admin-body">
+          <div class="field-grid">
+            <div class="field full"><label for="in_team1Name">Nombre local</label><input type="text" id="in_team1Name"></div>
+            <div class="field full"><label for="in_team1Logo">Escudo local (URL)</label><input type="text" id="in_team1Logo" placeholder="https://..."></div>
+            <div class="field full"><label for="in_team2Name">Nombre visitante</label><input type="text" id="in_team2Name"></div>
+            <div class="field full"><label for="in_team2Logo">Escudo visitante (URL)</label><input type="text" id="in_team2Logo" placeholder="https://..."></div>
           </div>
         </div>
-        <button class="volley-btn success" id="volleyPointTeam1" type="button" style="width:100%; margin-top:8px;">🏐 Punto local</button>
-      </div>
+      </details>
 
-      <div>
-        <div class="volley-field">
-          <label for="volleyInputPoints2">Visitante</label>
-          <div class="volley-score-control">
-            <button class="volley-btn danger" type="button" data-volley-points-team="2" data-volley-delta="-1">−</button>
-            <input type="number" id="volleyInputPoints2" min="0">
-            <button class="volley-btn primary" type="button" data-volley-points-team="2" data-volley-delta="1">+</button>
+      <details class="admin-group" open>
+        <summary>Puntos del set actual</summary>
+        <div class="admin-body">
+          <div class="score-admin">
+            <div class="field"><label for="in_points1">Puntos local</label><input type="number" id="in_points1" min="0"></div>
+            <div class="score-versus">VS</div>
+            <div class="field"><label for="in_points2">Puntos visitante</label><input type="number" id="in_points2" min="0"></div>
           </div>
+          <div class="button-row">
+            <button type="button" class="secondary" data-target="points1" data-delta="-1">− Local</button>
+            <button type="button" data-target="points1" data-delta="1">🏐 Punto local</button>
+            <button type="button" data-target="points2" data-delta="1">🏐 Punto visitante</button>
+            <button type="button" class="secondary" data-target="points2" data-delta="-1">− Visit.</button>
+          </div>
+          <button type="button" class="secondary" id="btnResetPoints" style="margin-top:8px;">↺ Reiniciar puntos del set</button>
         </div>
-        <button class="volley-btn success" id="volleyPointTeam2" type="button" style="width:100%; margin-top:8px;">🏐 Punto visitante</button>
-      </div>
-    </div>
+      </details>
 
-  </section>
-
-  <section class="volley-admin-section">
-    <h3>Sets ganados</h3>
-    <div class="volley-grid-two">
-      <div class="volley-field">
-        <label for="volleyInputSets1">Sets local</label>
-        <div class="volley-score-control">
-          <button class="volley-btn danger" type="button" data-volley-sets-team="1" data-volley-delta="-1">−</button>
-          <input type="number" id="volleyInputSets1" min="0">
-          <button class="volley-btn primary" type="button" data-volley-sets-team="1" data-volley-delta="1">+</button>
+      <details class="admin-group" open>
+        <summary>Sets</summary>
+        <div class="admin-body">
+          <div class="score-admin">
+            <div class="field"><label for="in_sets1">Sets local</label><input type="number" id="in_sets1" min="0"></div>
+            <div class="score-versus">VS</div>
+            <div class="field"><label for="in_sets2">Sets visitante</label><input type="number" id="in_sets2" min="0"></div>
+          </div>
+          <div class="button-row">
+            <button type="button" class="secondary" data-target="sets1" data-delta="-1">− Local</button>
+            <button type="button" data-target="sets1" data-delta="1">+ Set local</button>
+            <button type="button" data-target="sets2" data-delta="1">+ Set visit.</button>
+            <button type="button" class="secondary" data-target="sets2" data-delta="-1">− Visit.</button>
+          </div>
+          <div class="field" style="margin-top:11px;"><label for="in_currentSet">Set actual (rótulo)</label><input type="number" id="in_currentSet" min="1"></div>
+          <div class="button-row">
+            <button type="button" id="btnNextSet">▶ Siguiente set (+1 y reinicia puntos)</button>
+          </div>
+          <button type="button" class="secondary danger" id="btnResetMatch" style="margin-top:8px; width:100%;">⟲ Reiniciar partido completo</button>
         </div>
-      </div>
-      <div class="volley-field">
-        <label for="volleyInputSets2">Sets visitante</label>
-        <div class="volley-score-control">
-          <button class="volley-btn danger" type="button" data-volley-sets-team="2" data-volley-delta="-1">−</button>
-          <input type="number" id="volleyInputSets2" min="0">
-          <button class="volley-btn primary" type="button" data-volley-sets-team="2" data-volley-delta="1">+</button>
+      </details>
+
+      <details class="admin-group">
+        <summary>Posición y estilo</summary>
+        <div class="admin-body">
+          <div class="section-note">Top e Izquierda son porcentaje del lienzo (0–100). Mientras este panel está abierto, el fondo a cuadros te muestra los límites reales — así calzás cada dato con tu diseño hecho aparte.</div>
+
+          <div class="element-card">
+            <div class="element-title">Nombre local</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_name1_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_name1_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_name1_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_name1_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_name1_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Nombre visitante</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_name2_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_name2_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_name2_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_name2_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_name2_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Puntos local</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_points1_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_points1_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_points1_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_points1_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_points1_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Puntos visitante</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_points2_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_points2_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_points2_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_points2_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_points2_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Sets local</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_sets1_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_sets1_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_sets1_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_sets1_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_sets1_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Sets visitante</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_sets2_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_sets2_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_sets2_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_sets2_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_sets2_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Rótulo "Set actual"</div>
+            <div class="field-grid four">
+              <div class="field"><label>Top %</label><input type="number" id="ly_setLabel_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_setLabel_left" step="0.5"></div>
+              <div class="field"><label>Tamaño</label><input type="number" id="ly_setLabel_size" step="1"></div>
+              <div class="field"><label>Color</label><input type="color" id="ly_setLabel_color"></div>
+            </div>
+            <div class="field" style="margin-top:8px;"><label>Alineación</label>
+              <select id="ly_setLabel_align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Escudo local</div>
+            <div class="field-grid">
+              <div class="field"><label>Top %</label><input type="number" id="ly_logo1_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_logo1_left" step="0.5"></div>
+              <div class="field full"><label>Ancho (px)</label><input type="number" id="ly_logo1_width" step="1"></div>
+            </div>
+          </div>
+
+          <div class="element-card">
+            <div class="element-title">Escudo visitante</div>
+            <div class="field-grid">
+              <div class="field"><label>Top %</label><input type="number" id="ly_logo2_top" step="0.5"></div>
+              <div class="field"><label>Izq %</label><input type="number" id="ly_logo2_left" step="0.5"></div>
+              <div class="field full"><label>Ancho (px)</label><input type="number" id="ly_logo2_width" step="1"></div>
+            </div>
+          </div>
+
+          <button type="button" id="btnResetLayout" class="secondary" style="margin-top:2px;">⟲ Restablecer posiciones por defecto</button>
         </div>
-      </div>
-    </div>
+      </details>
 
-    <div class="volley-field">
-      <label for="volleyInputCurrentSet">Set actual</label>
-      <input type="number" id="volleyInputCurrentSet" min="1" value="1">
-    </div>
+      <details class="admin-group" open>
+        <summary>Link para OBS</summary>
+        <div class="admin-body">
+          <div class="section-note">Copiá este link y agregalo en OBS como <strong>Fuente de navegador</strong>, con fondo transparente y del mismo ancho/alto que uses en tu diseño de Affinity (por ejemplo 1920×1080). Ponelo como capa arriba del gráfico que hiciste aparte.</div>
+          <div id="obsLinkBox">
+            <input type="text" id="obsLinkInput" readonly>
+            <button type="button" id="copyObsLink">Copiar link</button>
+          </div>
+          <div class="hint">Este link NO tiene contraseña ni panel — es solo lo que verá OBS. Agrega <code>?match=nombre</code> a la URL de esta página para administrar partidos distintos con el mismo archivo.</div>
+        </div>
+      </details>
 
-    <div class="volley-field">
-      <label for="volleyInputMatchTitle">Nombre del partido</label>
-      <input type="text" id="volleyInputMatchTitle" placeholder="FINAL · VOLEIBOL">
     </div>
-
-    <div class="volley-team-actions">
-      <button class="volley-btn primary" id="volleyManualSetTeam1" type="button">+1 SET LOCAL</button>
-      <button class="volley-btn primary" id="volleyManualSetTeam2" type="button">+1 SET VISITANTE</button>
-    </div>
-    <div class="volley-manual-note">
-      <strong>Modo 100% manual.</strong><br>
-      Nada cambia por sí solo: puntos, sets y set actual se editan desde este panel.
-    </div>
-  </section>
-
-  <section class="volley-admin-section">
-    <h3>Acciones del partido</h3>
-    <div class="volley-action-grid">
-      <button class="volley-btn warning wide" id="volleyResetCurrentSet" type="button">↺ Reiniciar puntos del set</button>
-      <button class="volley-btn danger wide" id="volleyResetMatch" type="button">⟲ Reiniciar partido completo</button>
-    </div>
-  </section>
-
-  <button class="volley-btn" id="volleyShareBtn" type="button">🔗 Copiar enlace de solo lectura</button>
-
-  <div class="volley-hint">
-    Este marcador usa una ruta independiente en Firebase:
-    <code>marcadoresVolleyball/&lt;volleyMatchId&gt;</code>.<br><br>
-    Administrador: <code>?admin=1&amp;volleyMatch=nombre</code><br>
-    Solo lectura: <code>?volleyMatch=nombre</code>
   </div>
-</aside>
 
 <script>
 (function () {
-  'use strict';
-
-  // ====================================================================
-  // CONFIGURACIÓN DE FIREBASE — MISMO PROYECTO, RUTA TOTALMENTE SEPARADA
-  // ====================================================================
-  const VOLLEY_FIREBASE_CONFIG = {
-    apiKey: 'AIzaSyA71rh4uzcNOueb48-FegayRueExfmI9tw',
-    databaseURL: 'https://astraprods-default-rtdb.firebaseio.com',
-    projectId: 'astraprods'
+  // ======================================================================
+  // 1) CONFIGURACIÓN DE FIREBASE
+  // ======================================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyA71rh4uzcNOueb48-FegayRueExfmI9tw",
+    databaseURL: "https://astraprods-default-rtdb.firebaseio.com",
+    projectId: "astraprods"
   };
 
-  const VOLLEY_ADMIN_PASSWORD = 'astraprods';
-  const VOLLEY_DATABASE_ROOT = 'marcadoresVolleyball';
+  // Clave para poder editar el marcador (?admin=1). Cámbiala por la tuya.
+  const ADMIN_PASSWORD = "astraprods";
 
-  if (!firebase.apps.length) {
-    firebase.initializeApp(VOLLEY_FIREBASE_CONFIG);
-  }
+  const firebaseApp = firebase.initializeApp(FIREBASE_CONFIG, 'marcadorVolleySimpleApp');
+  const db = firebaseApp.database();
 
-  const volleyDatabase = firebase.database();
-  const volleyUrlParams = new URLSearchParams(window.location.search);
-  const volleyWantsAdmin = volleyUrlParams.get('admin') === '1';
-  const volleyMatchId = volleyUrlParams.get('volleyMatch') || 'default';
-  const volleyMatchReference = volleyDatabase.ref(
-    VOLLEY_DATABASE_ROOT + '/' + sanitizeVolleyMatchId(volleyMatchId)
-  );
+  const params = new URLSearchParams(window.location.search);
+  const wantsAdmin = params.get('admin') === '1';
+  let isAdmin = false;
+  const matchId = params.get('match') || 'default';
+  // Nodo propio (prefijo "marcadorVolleySimple") para no chocar con los
+  // otros gráficos que usan la misma base de datos de Firebase.
+  const matchRef = db.ref('marcadorVolleySimple/' + matchId);
 
-  let volleyIsAdmin = false;
-  let volleyState;
-  const volleyDefaults = {
-    volleyTeam1Name: 'ASTRA',
-    volleyTeam1Logo: 'https://i.imgur.com/6EJUsQO.png',
-    volleyTeam1Color: '#244fa8',
-    volleyTeam1TextColor: '#ffffff',
-    volleyTeam2Name: 'RIVALES',
-    volleyTeam2Logo: 'https://i.imgur.com/8vD0G0k.png',
-    volleyTeam2Color: '#c8374f',
-    volleyTeam2TextColor: '#ffffff',
-    volleyPoints1: 0,
-    volleyPoints2: 0,
-    volleySets1: 0,
-    volleySets2: 0,
-    volleyCurrentSet: 1,
-    volleyMatchTitle: 'VOLEIBOL · PARTIDO EN VIVO'
+  const defaultLayout = {
+    name1:     { top: 4,  left: 12, size: 28, color: '#ffffff', align: 'left'   },
+    name2:     { top: 4,  left: 88, size: 28, color: '#ffffff', align: 'right'  },
+    points1:   { top: 4,  left: 46, size: 44, color: '#ffffff', align: 'center' },
+    points2:   { top: 4,  left: 54, size: 44, color: '#ffffff', align: 'center' },
+    sets1:     { top: 13, left: 46, size: 20, color: '#ffffff', align: 'center' },
+    sets2:     { top: 13, left: 54, size: 20, color: '#ffffff', align: 'center' },
+    setLabel:  { top: 20, left: 50, size: 16, color: '#ffffff', align: 'center' },
+    logo1:     { top: 4,  left: 3,  width: 70 },
+    logo2:     { top: 4,  left: 86, width: 70 }
   };
 
-  volleyState = deepCopy(volleyDefaults);
-
-  const volleyElements = {
-    teamHome: document.getElementById('volleyTeamHome'),
-    teamAway: document.getElementById('volleyTeamAway'),
-    logo1: document.getElementById('volleyLogo1'),
-    logo2: document.getElementById('volleyLogo2'),
-    name1: document.getElementById('volleyName1'),
-    name2: document.getElementById('volleyName2'),
-    points1: document.getElementById('volleyPoints1'),
-    points2: document.getElementById('volleyPoints2'),
-    sets1: document.getElementById('volleySets1'),
-    sets2: document.getElementById('volleySets2'),
-    setLabel: document.getElementById('volleySetLabel'),
-    matchLabel: document.getElementById('volleyMatchLabel')
+  const defaults = {
+    team1Name: 'LOCAL',
+    team1Logo: 'https://i.imgur.com/6EJUsQO.png',
+    team2Name: 'VISITANTE',
+    team2Logo: 'https://i.imgur.com/8vD0G0k.png',
+    points1: 0,
+    points2: 0,
+    sets1: 0,
+    sets2: 0,
+    currentSet: 1,
+    layout: JSON.parse(JSON.stringify(defaultLayout))
   };
 
-  const volleyInputs = {
-    volleyTeam1Name: document.getElementById('volleyInputTeam1Name'),
-    volleyTeam1Logo: document.getElementById('volleyInputTeam1Logo'),
-    volleyTeam1Color: document.getElementById('volleyInputTeam1Color'),
-    volleyTeam1TextColor: document.getElementById('volleyInputTeam1TextColor'),
-    volleyTeam2Name: document.getElementById('volleyInputTeam2Name'),
-    volleyTeam2Logo: document.getElementById('volleyInputTeam2Logo'),
-    volleyTeam2Color: document.getElementById('volleyInputTeam2Color'),
-    volleyTeam2TextColor: document.getElementById('volleyInputTeam2TextColor'),
-    volleyPoints1: document.getElementById('volleyInputPoints1'),
-    volleyPoints2: document.getElementById('volleyInputPoints2'),
-    volleySets1: document.getElementById('volleyInputSets1'),
-    volleySets2: document.getElementById('volleyInputSets2'),
-    volleyCurrentSet: document.getElementById('volleyInputCurrentSet'),
-    volleyMatchTitle: document.getElementById('volleyInputMatchTitle')
+  let state = JSON.parse(JSON.stringify(defaults));
+
+  const stageEl = {
+    name1: document.getElementById('el_name1'),
+    name2: document.getElementById('el_name2'),
+    points1: document.getElementById('el_points1'),
+    points2: document.getElementById('el_points2'),
+    sets1: document.getElementById('el_sets1'),
+    sets2: document.getElementById('el_sets2'),
+    setLabel: document.getElementById('el_setLabel'),
+    logo1: document.getElementById('el_logo1'),
+    logo2: document.getElementById('el_logo2')
   };
+  const img1 = document.getElementById('img_logo1');
+  const img2 = document.getElementById('img_logo2');
 
-  function deepCopy(value) {
-    return JSON.parse(JSON.stringify(value));
+  function safeInt(value, fallback = 0) {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
 
-  function sanitizeVolleyMatchId(value) {
-    const sanitized = String(value || 'default')
-      .trim()
-      .replace(/[.#$\[\]/]/g, '-')
-      .slice(0, 80);
-    return sanitized || 'default';
+  function safeFloat(value, fallback = 0) {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
 
-  function volleySafeInteger(value, fallback) {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+  function applyLayoutToTextEl(el, cfg) {
+    if (!cfg) return;
+    el.style.top = cfg.top + '%';
+    el.style.left = cfg.left + '%';
+    el.style.fontSize = cfg.size + 'px';
+    el.style.color = cfg.color;
+    el.style.textAlign = cfg.align;
+    el.style.transform =
+      cfg.align === 'center' ? 'translateX(-50%)' :
+      cfg.align === 'right' ? 'translateX(-100%)' : 'none';
   }
 
-  // Normalize every Firebase snapshot so old/missing fields never break
-  // the public scoreboard.
-  function normalizeVolleyState(data) {
-    const normalized = Object.assign({}, volleyDefaults, data || {});
-    normalized.volleyPoints1 = volleySafeInteger(normalized.volleyPoints1, 0);
-    normalized.volleyPoints2 = volleySafeInteger(normalized.volleyPoints2, 0);
-    normalized.volleySets1 = volleySafeInteger(normalized.volleySets1, 0);
-    normalized.volleySets2 = volleySafeInteger(normalized.volleySets2, 0);
-    return normalized;
+  function applyLayoutToLogoEl(el, cfg, imgEl) {
+    if (!cfg) return;
+    el.style.top = cfg.top + '%';
+    el.style.left = cfg.left + '%';
+    el.style.width = cfg.width + 'px';
+    imgEl.style.width = '100%';
   }
 
-  function currentVolleySetNumber() {
-    return Math.max(1, volleySafeInteger(volleyState.volleyCurrentSet, 1));
+  function render() {
+    stageEl.name1.innerText = state.team1Name;
+    stageEl.name2.innerText = state.team2Name;
+    stageEl.points1.innerText = state.points1;
+    stageEl.points2.innerText = state.points2;
+    stageEl.sets1.innerText = state.sets1;
+    stageEl.sets2.innerText = state.sets2;
+    stageEl.setLabel.innerText = 'SET ' + Math.max(1, safeInt(state.currentSet, 1));
+    img1.src = state.team1Logo;
+    img1.alt = 'Escudo de ' + state.team1Name;
+    img2.src = state.team2Logo;
+    img2.alt = 'Escudo de ' + state.team2Name;
+
+    const L = state.layout;
+    applyLayoutToTextEl(stageEl.name1, L.name1);
+    applyLayoutToTextEl(stageEl.name2, L.name2);
+    applyLayoutToTextEl(stageEl.points1, L.points1);
+    applyLayoutToTextEl(stageEl.points2, L.points2);
+    applyLayoutToTextEl(stageEl.sets1, L.sets1);
+    applyLayoutToTextEl(stageEl.sets2, L.sets2);
+    applyLayoutToTextEl(stageEl.setLabel, L.setLabel);
+    applyLayoutToLogoEl(stageEl.logo1, L.logo1, img1);
+    applyLayoutToLogoEl(stageEl.logo2, L.logo2, img2);
   }
 
-  function updateVolleyState(partial) {
-    if (!volleyIsAdmin) return;
-    return volleyMatchReference.update(partial);
+  function pushState(partial) {
+    matchRef.update(partial);
   }
 
-  function renderVolleyScoreboard(previousState) {
-    volleyElements.name1.textContent = volleyState.volleyTeam1Name;
-    volleyElements.name2.textContent = volleyState.volleyTeam2Name;
-    volleyElements.logo1.src = volleyState.volleyTeam1Logo || '';
-    volleyElements.logo2.src = volleyState.volleyTeam2Logo || '';
-    volleyElements.points1.textContent = volleyState.volleyPoints1;
-    volleyElements.points2.textContent = volleyState.volleyPoints2;
-    volleyElements.sets1.textContent = volleyState.volleySets1;
-    volleyElements.sets2.textContent = volleyState.volleySets2;
-    volleyElements.setLabel.textContent = 'SET ' + currentVolleySetNumber();
-    volleyElements.matchLabel.textContent = volleyState.volleyMatchTitle || String(volleyMatchId).toUpperCase();
-
-    volleyElements.teamHome.style.background = volleyState.volleyTeam1Color;
-    volleyElements.teamHome.style.color = volleyState.volleyTeam1TextColor;
-    volleyElements.teamAway.style.background = volleyState.volleyTeam2Color;
-    volleyElements.teamAway.style.color = volleyState.volleyTeam2TextColor;
-
-
-    fillVolleyInputs();
-  }
-
-  function animateVolleyPoint(element) {
-    element.classList.remove('bump');
-    void element.offsetWidth;
-    element.classList.add('bump');
-  }
-
-  function fillVolleyInputs() {
-    Object.keys(volleyInputs).forEach(function (key) {
-      const input = volleyInputs[key];
-      if (document.activeElement !== input) {
-        input.value = volleyState[key];
-      }
-    });
-  }
-
-  function addVolleyPoint(teamNumber) {
-    if (!volleyIsAdmin) return;
-
-    const key = teamNumber === 2 ? 'volleyPoints2' : 'volleyPoints1';
-    const next = volleySafeInteger(volleyState[key], 0) + 1;
-    updateVolleyState({ [key]: next });
-  }
-
-  function adjustVolleyValue(category, teamNumber, delta) {
-    const key = category === 'sets'
-      ? (teamNumber === 2 ? 'volleySets2' : 'volleySets1')
-      : (teamNumber === 2 ? 'volleyPoints2' : 'volleyPoints1');
-    const next = Math.max(0, volleySafeInteger(volleyState[key], 0) + delta);
-    updateVolleyState({ [key]: next });
-  }
-
-  function setVolleyWinner(teamNumber) {
-    if (!volleyIsAdmin) return;
-    const key = teamNumber === 2 ? 'volleySets2' : 'volleySets1';
-    const next = volleySafeInteger(volleyState[key], 0) + 1;
-    updateVolleyState({ [key]: next });
-  }
-
-  function resetVolleyCurrentSet() {
-    if (!volleyIsAdmin) return;
-    updateVolleyState({
-      volleyPoints1: 0,
-      volleyPoints2: 0
-    });
-  }
-
-  function resetVolleyMatch() {
-    const teamSettings = {
-      volleyTeam1Name: volleyState.volleyTeam1Name,
-      volleyTeam1Logo: volleyState.volleyTeam1Logo,
-      volleyTeam1Color: volleyState.volleyTeam1Color,
-      volleyTeam1TextColor: volleyState.volleyTeam1TextColor,
-      volleyTeam2Name: volleyState.volleyTeam2Name,
-      volleyTeam2Logo: volleyState.volleyTeam2Logo,
-      volleyTeam2Color: volleyState.volleyTeam2Color,
-      volleyTeam2TextColor: volleyState.volleyTeam2TextColor
-    };
-
-    updateVolleyState(Object.assign({}, teamSettings, {
-      volleyPoints1: 0,
-      volleyPoints2: 0,
-      volleySets1: 0,
-      volleySets2: 0
-    }));
-  }
-
-  // =========================== FIREBASE LISTENERS ===========================
-  volleyMatchReference.on('value', function (snapshot) {
-    const previousState = volleyState;
+  matchRef.on('value', (snapshot) => {
     const data = snapshot.val();
 
-    if (data) {
-      volleyState = normalizeVolleyState(data);
-    } else {
-      volleyState = deepCopy(volleyDefaults);
-      if (volleyIsAdmin) {
-        volleyMatchReference.set(deepCopy(volleyDefaults));
+    state = data ? {
+      ...defaults,
+      ...data,
+      layout: {
+        name1: { ...defaultLayout.name1, ...((data.layout || {}).name1 || {}) },
+        name2: { ...defaultLayout.name2, ...((data.layout || {}).name2 || {}) },
+        points1: { ...defaultLayout.points1, ...((data.layout || {}).points1 || {}) },
+        points2: { ...defaultLayout.points2, ...((data.layout || {}).points2 || {}) },
+        sets1: { ...defaultLayout.sets1, ...((data.layout || {}).sets1 || {}) },
+        sets2: { ...defaultLayout.sets2, ...((data.layout || {}).sets2 || {}) },
+        setLabel: { ...defaultLayout.setLabel, ...((data.layout || {}).setLabel || {}) },
+        logo1: { ...defaultLayout.logo1, ...((data.layout || {}).logo1 || {}) },
+        logo2: { ...defaultLayout.logo2, ...((data.layout || {}).logo2 || {}) }
       }
-    }
+    } : JSON.parse(JSON.stringify(defaults));
 
-    renderVolleyScoreboard(previousState);
+    setTimeout(() => {
+      fillInputsFromState();
+      render();
+    }, 0);
   });
 
-  volleyDatabase.ref('.info/connected').on('value', function (snapshot) {
-    const dot = document.getElementById('volleyConnectionDot');
-    const text = document.getElementById('volleyConnectionText');
-    if (!dot || !text) return;
-
-    if (snapshot.val() === true) {
+  db.ref('.info/connected').on('value', (snap) => {
+    const dot = document.getElementById('connDot');
+    const text = document.getElementById('connText');
+    if (!dot) return;
+    if (snap.val() === true) {
       dot.className = 'online';
-      text.textContent = 'Conectado — cambios manuales en vivo';
-
-      const status = document.getElementById('volleyStatusText');
-      if (status) status.textContent = 'EN VIVO · SINCRONIZADO · PUNTOS DEL SET ACTUAL';
+      text.innerText = 'Conectado — cambios en vivo';
     } else {
       dot.className = 'offline';
-      text.textContent = 'Sin conexión...';
-
-      const status = document.getElementById('volleyStatusText');
-      if (status) status.textContent = 'SIN CONEXIÓN · ESPERANDO FIREBASE';
+      text.innerText = 'Sin conexión...';
     }
   });
 
-  // =========================== ADMINISTRACIÓN ===========================
-  const volleyAdminPanel = document.getElementById('volleyAdminPanel');
-  const volleyAdminToggle = document.getElementById('volleyAdminToggle');
-  const volleyLockScreen = document.getElementById('volleyLockScreen');
-  const volleyLockInput = document.getElementById('volleyLockInput');
-  const volleyLockError = document.getElementById('volleyLockError');
+  // ---------- Panel de administración ----------
+  const panel = document.getElementById('adminPanel');
+  const toggleBtn = document.getElementById('adminToggle');
+  const closeBtn = document.getElementById('closePanel');
+  const lockScreen = document.getElementById('lockScreen');
+  const lockInput = document.getElementById('lockInput');
+  const lockSubmit = document.getElementById('lockSubmit');
+  const lockError = document.getElementById('lockError');
 
-  function activateVolleyAdmin() {
-    volleyIsAdmin = true;
-    volleyAdminPanel.style.display = '';
-    volleyAdminToggle.style.display = 'block';
+  panel.style.display = 'none';
 
-    volleyMatchReference.once('value').then(function (snapshot) {
-      if (!snapshot.val()) {
-        return volleyMatchReference.set(deepCopy(volleyDefaults));
-      }
-    });
+  function obsCleanUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('admin');
+    return url.toString();
   }
 
-  function tryUnlockVolleyAdmin() {
-    if (volleyLockInput.value === VOLLEY_ADMIN_PASSWORD) {
-      volleyLockScreen.style.display = 'none';
-      activateVolleyAdmin();
+  function activateAdmin() {
+    isAdmin = true;
+    panel.style.display = '';
+    toggleBtn.style.display = 'block';
+    document.body.classList.add('admin-mode');
+
+    const obsInput = document.getElementById('obsLinkInput');
+    if (obsInput) obsInput.value = obsCleanUrl();
+
+    // transaction() es atómico: si dos admins entran al mismo tiempo a un
+    // partido nuevo, Firebase resuelve el conflicto en el servidor y nunca
+    // se pisan ni se borra un partido que ya estaba en curso.
+    matchRef.transaction((current) => (current === null ? defaults : current));
+  }
+
+  function tryUnlock() {
+    if (lockInput.value === ADMIN_PASSWORD) {
+      lockScreen.style.display = 'none';
+      activateAdmin();
     } else {
-      volleyLockError.classList.add('show');
-      volleyLockInput.value = '';
-      volleyLockInput.focus();
+      lockError.classList.add('show');
+      lockInput.value = '';
+      lockInput.focus();
     }
   }
 
-  if (volleyWantsAdmin) {
-    volleyLockScreen.style.display = 'flex';
-    volleyLockInput.focus();
-    document.getElementById('volleyLockSubmit').addEventListener('click', tryUnlockVolleyAdmin);
-    volleyLockInput.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') tryUnlockVolleyAdmin();
+  if (wantsAdmin) {
+    lockScreen.style.display = 'flex';
+    lockInput.focus();
+    lockSubmit.addEventListener('click', tryUnlock);
+    lockInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') tryUnlock();
     });
   }
 
-  volleyAdminToggle.addEventListener('click', function () {
-    volleyAdminPanel.classList.add('open');
+  const inputs = {
+    team1Name: document.getElementById('in_team1Name'),
+    team1Logo: document.getElementById('in_team1Logo'),
+    team2Name: document.getElementById('in_team2Name'),
+    team2Logo: document.getElementById('in_team2Logo'),
+    points1: document.getElementById('in_points1'),
+    points2: document.getElementById('in_points2'),
+    sets1: document.getElementById('in_sets1'),
+    sets2: document.getElementById('in_sets2'),
+    currentSet: document.getElementById('in_currentSet')
+  };
+
+  const layoutKeys = ['name1', 'name2', 'points1', 'points2', 'sets1', 'sets2', 'setLabel', 'logo1', 'logo2'];
+  const layoutInputs = {};
+  layoutKeys.forEach((key) => {
+    const isLogo = key === 'logo1' || key === 'logo2';
+    layoutInputs[key] = {
+      top: document.getElementById('ly_' + key + '_top'),
+      left: document.getElementById('ly_' + key + '_left'),
+      size: isLogo ? document.getElementById('ly_' + key + '_width') : document.getElementById('ly_' + key + '_size'),
+      color: isLogo ? null : document.getElementById('ly_' + key + '_color'),
+      align: isLogo ? null : document.getElementById('ly_' + key + '_align')
+    };
   });
 
-  document.getElementById('volleyClosePanel').addEventListener('click', function () {
-    volleyAdminPanel.classList.remove('open');
-  });
+  function setInputValue(input, value) {
+    if (input && document.activeElement !== input) input.value = value;
+  }
 
-  // Inputs de texto, color y números
-  Object.keys(volleyInputs).forEach(function (key) {
-    const input = volleyInputs[key];
-    input.addEventListener('change', function () {
-      let value = input.value;
-      if (key.indexOf('Points') !== -1 || key.indexOf('Sets') !== -1) {
-        value = volleySafeInteger(value, 0);
+  function fillInputsFromState() {
+    Object.keys(inputs).forEach((key) => setInputValue(inputs[key], state[key]));
+
+    layoutKeys.forEach((key) => {
+      const cfg = state.layout[key];
+      const ins = layoutInputs[key];
+      if (!cfg || !ins) return;
+      setInputValue(ins.top, cfg.top);
+      setInputValue(ins.left, cfg.left);
+      setInputValue(ins.size, key.startsWith('logo') ? cfg.width : cfg.size);
+      if (ins.color) setInputValue(ins.color, cfg.color);
+      if (ins.align && document.activeElement !== ins.align) ins.align.value = cfg.align;
+    });
+  }
+
+  function bindInputs() {
+    Object.keys(inputs).forEach((key) => {
+      inputs[key].addEventListener('input', () => {
+        const isNumber = key === 'points1' || key === 'points2' || key === 'sets1' || key === 'sets2' || key === 'currentSet';
+        const value = isNumber ? Math.max(key === 'currentSet' ? 1 : 0, safeInt(inputs[key].value, key === 'currentSet' ? 1 : 0)) : inputs[key].value;
+        pushState({ [key]: value });
+      });
+    });
+
+    layoutKeys.forEach((key) => {
+      const ins = layoutInputs[key];
+      const isLogo = key.startsWith('logo');
+
+      function pushLayout(partial) {
+        pushState({ layout: { ...state.layout, [key]: { ...state.layout[key], ...partial } } });
       }
-      updateVolleyState({ [key]: value });
+
+      ins.top.addEventListener('input', () => pushLayout({ top: safeFloat(ins.top.value) }));
+      ins.left.addEventListener('input', () => pushLayout({ left: safeFloat(ins.left.value) }));
+      ins.size.addEventListener('input', () => {
+        pushLayout(isLogo ? { width: safeFloat(ins.size.value) } : { size: safeFloat(ins.size.value) });
+      });
+      if (ins.color) ins.color.addEventListener('input', () => pushLayout({ color: ins.color.value }));
+      if (ins.align) ins.align.addEventListener('change', () => pushLayout({ align: ins.align.value }));
+    });
+  }
+
+  document.getElementById('btnResetLayout').addEventListener('click', () => {
+    pushState({ layout: JSON.parse(JSON.stringify(defaultLayout)) });
+  });
+
+  // ---------- Botones de puntos / sets ----------
+  document.querySelectorAll('[data-target]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.target;
+      const delta = safeInt(button.dataset.delta);
+      const next = Math.max(0, safeInt(state[target]) + delta);
+      pushState({ [target]: next });
     });
   });
 
-  document.querySelectorAll('[data-volley-points-team]').forEach(function (button) {
-    button.addEventListener('click', function () {
-      adjustVolleyValue(
-        'points',
-        Number(button.dataset.volleyPointsTeam),
-        Number(button.dataset.volleyDelta)
-      );
+  document.getElementById('btnResetPoints').addEventListener('click', () => {
+    pushState({ points1: 0, points2: 0 });
+  });
+
+  document.getElementById('btnNextSet').addEventListener('click', () => {
+    const next = Math.max(1, safeInt(state.currentSet, 1) + 1);
+    pushState({ currentSet: next, points1: 0, points2: 0 });
+  });
+
+  document.getElementById('btnResetMatch').addEventListener('click', () => {
+    pushState({ points1: 0, points2: 0, sets1: 0, sets2: 0, currentSet: 1 });
+  });
+
+  toggleBtn.addEventListener('click', () => panel.classList.add('open'));
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+  // ---------- Link para OBS ----------
+  document.getElementById('copyObsLink').addEventListener('click', () => {
+    const input = document.getElementById('obsLinkInput');
+    input.value = obsCleanUrl();
+    navigator.clipboard.writeText(input.value).then(() => {
+      const button = document.getElementById('copyObsLink');
+      const original = button.innerText;
+      button.innerText = '✓ Copiado';
+      setTimeout(() => { button.innerText = original; }, 1500);
     });
   });
 
-  document.querySelectorAll('[data-volley-sets-team]').forEach(function (button) {
-    button.addEventListener('click', function () {
-      adjustVolleyValue(
-        'sets',
-        Number(button.dataset.volleySetsTeam),
-        Number(button.dataset.volleyDelta)
-      );
-    });
-  });
-
-  document.getElementById('volleyPointTeam1').addEventListener('click', function () {
-    addVolleyPoint(1);
-  });
-
-  document.getElementById('volleyPointTeam2').addEventListener('click', function () {
-    addVolleyPoint(2);
-  });
-
-  document.getElementById('volleyManualSetTeam1').addEventListener('click', function () {
-    setVolleyWinner(1);
-  });
-
-  document.getElementById('volleyManualSetTeam2').addEventListener('click', function () {
-    setVolleyWinner(2);
-  });
-
-  document.getElementById('volleyResetCurrentSet').addEventListener('click', resetVolleyCurrentSet);
-  document.getElementById('volleyResetMatch').addEventListener('click', resetVolleyMatch);
-
-  document.getElementById('volleyShareBtn').addEventListener('click', function () {
-    const publicUrl = new URL(window.location.href);
-    publicUrl.searchParams.delete('admin');
-
-    navigator.clipboard.writeText(publicUrl.toString()).then(function () {
-      const button = document.getElementById('volleyShareBtn');
-      const originalText = button.textContent;
-      button.textContent = '✓ Enlace copiado';
-      setTimeout(function () {
-        button.textContent = originalText;
-      }, 1500);
-    }).catch(function () {
-      window.prompt('Copia este enlace:', publicUrl.toString());
-    });
-  });
-
-  renderVolleyScoreboard(null);
+  // ---------- Inicialización ----------
+  bindInputs();
 })();
 </script>
+
 </body>
 </html>
